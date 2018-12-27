@@ -18,8 +18,8 @@ from utils import NMI,batch_generator
 # 超参数：
 params = {'n_clusters':23, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 3
-epoch_train = 20
-epoch_val = 20
+epoch_train = 10
+epoch_val = 10
 # batch_size = 128
 
 if not os.path.exists('log'):
@@ -62,7 +62,7 @@ for game_epoch in range(total_game_epoch):
         pairs_label = pairs_label[shuffle]
         # np.save('pairs.npy',pairs)
         # np.save('pairs_label.npy',pairs_label)
-        for batch_size in [4,8,16,32,64,128]:
+        for batch_size in [1,4,8,16,32,64,128]:
             for epoch in range(epoch_train):
                 print('The next epoch is ',epoch)
                 # shuffle the pairs each epoch
