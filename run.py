@@ -26,7 +26,7 @@ if not os.path.exists('log'):
     os.mkdir('log') 
 log_dir = 'log' # 如果log目录不存在于当前目录，则在当前文件夹创建一个“log”目录并赋值给log_dir对象
 
-# unlabel_data, _ = get_data()
+
 unlabel_data = np.load('mnist.npy').astype(np.float32)
 label = np.load('mnist_lab.npy')[:1000] # for NMI computation
 unlabel_data = unlabel_data[:1000]
