@@ -17,22 +17,48 @@ class siamese():
                 self.x2 = tf.placeholder(tf.float32,[None,784])
             with tf.name_scope('y_input'):
                 self.y_true = tf.placeholder(tf.float32,[None])
-
             # with tf.name_scope('dropout'):
                 # self.dropout = tf.placeholder(tf.float32)
-            with tf.name_scope('learning_rate'):
-                self.learning_rate = tf.placeholder(tf.float32,[None])
 
         with tf.variable_scope('siamese') as scope:
             self.output1 = self.deepnn(self.x1) # shape:(1000,10) or (1,10)
             scope.reuse_variables()
             self.output2 = self.deepnn(self.x2)
             with tf.name_scope('similarity'):
-                self.similarity = self.predict_similarity()
+                self.similarity = self.predict_similarity(self.output1,self.output2)
         
         with tf.name_scope('loss'):
             self.loss = self.contro_loss()
             # tf.summary.scalar('loss',self.loss)
+
+    def contro_loss(self):
+
+        '''
+        总结下来对比损失的特点：首先看标签，然后标签为1是正对，负对部分损失为0，最小化总损失就是最小化类内损失(within_loss)部分，
+        让s逼近margin的过程，是个增大的过程；标签为0是负对，正对部分损失为0，最小化总损失就是最小化between_loss，而且此时between_loss就是s，
+        所以这个过程也是最小化s的过程，也就使不相似的对更不相似了.
+        最小化类内损失的是一个增大s的过程，最小化类间损失的是一个减少s的过程。
+        '''
+        
+        s = self.similarity
+        one = tf.constant(1.0)
+        margin = 1.0
+        y_true = tf.to_float(self.y_true)
+
+        # 类内损失：
+        max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
+        #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
+        within_loss = tf.multiply(y_true,max_part) 
+
+        # 类间损失：
+        #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
+        between_loss = tf.multiply(one-y_true,s) 
+
+        # 总体损失（要最小化）：
+        loss = 0.5*tf.reduce_mean(within_loss+between_loss) 
+        return loss
+
+
     def deepnn(self,x):
 
         # input reshape to [batch_size,28,28,channel]
@@ -94,46 +120,21 @@ class siamese():
         return embedding
 
  
-    def predict_similarity(self):
+    def predict_similarity(self,embedding1,embedding2):
         '''
         要注意的是当样本batch_size为1时，用这个当做函数来计算两两样本之间的相似度需要注意最后求均值的axis问题
         '''
         # A, B分别是两个样本经过网络传播之后的提取后的特征/embedding
         # 求两个向量的余弦夹角：A*B/|A|*|B|
         # 求每对样本之间的相似度，即使一个batch_size也是先求各自的再求平均
-        cosi = tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(self.output1,self.output2),axis=1,keep_dims=True),
-                    tf.multiply( tf.sqrt(tf.reduce_sum(tf.square(self.output1),axis=1)),
-                    tf.sqrt(tf.reduce_sum(tf.square(self.output2),axis=1,keep_dims=True)))))
+        cosi = tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
+                    tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1)),
+                    tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True)))))
         cosi = (cosi+1)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
         # cosi batch_size shape：（batch_size，1）
         return cosi
 
-    def contro_loss(self):
 
-        '''
-        总结下来对比损失的特点：首先看标签，然后标签为1是正对，负对部分损失为0，最小化总损失就是最小化类内损失(within_loss)部分，
-        让s逼近margin的过程，是个增大的过程；标签为0是负对，正对部分损失为0，最小化总损失就是最小化between_loss，而且此时between_loss就是s，
-        所以这个过程也是最小化s的过程，也就使不相似的对更不相似了.
-        最小化类内损失的是一个增大s的过程，最小化类间损失的是一个减少s的过程。
-        '''
-        
-        s = self.similarity
-        one = tf.constant(1.0)
-        margin = 1.0
-        y_true = tf.to_float(self.y_true)
-
-        # 类内损失：
-        max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
-        #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
-        within_loss = tf.multiply(y_true,max_part) 
-
-        # 类间损失：
-        #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
-        between_loss = tf.multiply(one-y_true,s) 
-
-        # 总体损失（要最小化）：
-        loss = 0.5*tf.reduce_mean(within_loss+between_loss) 
-        return loss
 
     def variable_summaries(self,var):
         '''Attach a lot of summaries to a Tensor (for Tensorboard visualization).'''
