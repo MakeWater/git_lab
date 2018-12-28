@@ -28,10 +28,10 @@ class siamese():
                 self.similarity = self.predict_similarity(self.output1,self.output2)
         
         with tf.name_scope('loss'):
-            self.loss = self.contro_loss()
+            self.loss = self.contro_loss(self.similarity,self.y_true)
             # tf.summary.scalar('loss',self.loss)
 
-    def contro_loss(self):
+    def contro_loss(self,similarity_by_network,pairs_label):
 
         '''
         总结下来对比损失的特点：首先看标签，然后标签为1是正对，负对部分损失为0，最小化总损失就是最小化类内损失(within_loss)部分，
@@ -40,10 +40,10 @@ class siamese():
         最小化类内损失的是一个增大s的过程，最小化类间损失的是一个减少s的过程。
         '''
         
-        s = self.similarity
+        s = similarity_by_network
         one = tf.constant(1.0)
         margin = 1.0
-        y_true = tf.to_float(self.y_true)
+        y_true = pairs_label
 
         # 类内损失：
         max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
