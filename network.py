@@ -41,7 +41,7 @@ class siamese():
         '''
         
         s = similarity_by_network
-        one = tf.constant(1.0)
+        # one = tf.constant(1.0)
         margin = 1.0
         y_true = pairs_label
 
@@ -52,7 +52,7 @@ class siamese():
 
         # 类间损失：
         #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
-        between_loss = tf.multiply(one-y_true,s) 
+        between_loss = tf.multiply(1.0-y_true,s) 
 
         # 总体损失（要最小化）：
         loss = 0.5*tf.reduce_mean(within_loss+between_loss) 
