@@ -79,7 +79,7 @@ def get_pairs_by_siamese(data,W,params):
     return pairs,pairs_label,index_to_pair,label_pred
 
 def creat_pairs(data,label):
-    '''data is raw data,label is predicted by spectral clustering(get_label_pred)
+    '''data is raw data,label is predicted by spectral clustering(SC)
     params_sub = {'n_clusters':2, 'n_nbrs':len(dt)/2, 'affinity':'nearest_neighbors'}
     '''
     mnist_label = np.load('mnist_lab.npy')
@@ -89,20 +89,19 @@ def creat_pairs(data,label):
     display_label(class_indices,mnist_label)
     index_to_pair = strainer_of_classindices(data,class_indices)
 
-    # np.save('class_indices.npy',class_indices)
+    np.save('class_indices.npy',class_indices)
     # np.save('index_to_pair.npy',index_to_pair)
 
     print('######################## SPLIT LINE ######################################')
     # display label distribute
-    # index_to_pair = np.load('index_to_pair.npy')
     display_label(index_to_pair,mnist_label)
     # exit()
     cluster_number = len(index_to_pair)
-    pos_pairs_temp = []
+    pos_pairs = []
     # 对每一个样本进行旋转后进行相互配对，得到关于自身的配对。
     for i in range(cluster_number):
-        class_data_temp = []
-        for idx in index_to_pair[i]:
+        for idx in index_to_pair[i]:   # index_to_pair >> class_indices
+            class_data_temp = []
             img = data[idx].reshape(28,28)
             class_data_temp.append(data[idx])
             img_roted_330 = np.array(img)
@@ -114,18 +113,12 @@ def creat_pairs(data,label):
             class_data_temp.append(img_roted_30) # 此时class~temp中含有三个图片数据，且100%属于同一类
             pos_pair_generator = combinations(class_data_temp,2)
             single_pairs = [[sample1,sample2] for (sample1,sample2) in pos_pair_generator]
-            pos_pairs_temp.append(single_pairs)
-        pos_pair_generator = combinations(index_to_pair[i],2)
+            for pair in single_pairs:
+                pos_pairs.append(pair) # 只添加一个图片及其变化内部的配对！！！
+        pos_pair_generator = combinations(index_to_pair[i],2)      # index_to_pair >> class_indices
         single_pairs = [[data[idx1],data[idx2]] for (idx1,idx2) in pos_pair_generator] #同一类只在原数据间配对，它们的旋转之间不配对
-        pos_pairs_temp.append(single_pairs)
-        #---------------------------------------------# index_to_pair 每一行的数据所能产生的所有对
-        #---------此次修改主要改进了配对方式使所配的对更准确。同时注意到permutations（）函数是排列，不是组合。-------------#
-    
-    pos_pairs = []
-    for i in range(len(pos_pairs_temp)):
-        for p_ in pos_pairs_temp[i]:
-            pos_pairs.append(p_)
-
+        for pair in single_pairs:
+            pos_pairs.append(pair)
     neg_pairs = []
     neg_num = np.arange(len(pos_pairs))
     for _ in neg_num:
@@ -137,8 +130,8 @@ def creat_pairs(data,label):
         neg_pairs.append([data[idx1],data[idx2]])
     pos_pairs = np.array(pos_pairs)
     neg_pairs = np.array(neg_pairs)
-    # np.save('pos_pairs.npy',pos_pairs) # save pos pairs
-    # np.save('neg_pairs.npy',neg_pairs) # save neg pairs ,all for validating.
+    np.save('pos_pairs.npy',pos_pairs) # save pos pairs
+    np.save('neg_pairs.npy',neg_pairs) # save neg pairs ,all for validating.
     pos_lab = np.ones(len(pos_pairs))
     neg_lab = np.zeros(len(neg_pairs))
     pairs = np.concatenate((pos_pairs,neg_pairs),axis=0)
