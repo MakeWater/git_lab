@@ -52,8 +52,8 @@ for game_epoch in range(total_game_epoch):
         sess.run(tf.global_variables_initializer())
         # merged = tf.summary.merge_all()
         # pairs, pairs_label, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
-        pairs = np.load('pairs.npy').astype(np.float32)
-        pairs_label = np.load('pairs_label.npy').astype(np.float32)
+        pairs = np.load('pairs_raw.npy').astype(np.float32)
+        pairs_label = np.load('pairs_raw_label.npy').astype(np.float32)
         # NMI_score = NMI(label_pred,label)
         # print('the mean NMI score is:',NMI_score)
         print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
@@ -62,7 +62,7 @@ for game_epoch in range(total_game_epoch):
         pairs_label = pairs_label[shuffle]
         # np.save('pairs.npy',pairs)
         # np.save('pairs_label.npy',pairs_label)
-        for batch_size in [4,8,16,32,64,128]:
+        for batch_size in [4,16,32,64,128]:
             for epoch in range(epoch_train):
                 print('The next epoch is ',epoch)
                 # shuffle the pairs each epoch
