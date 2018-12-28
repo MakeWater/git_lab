@@ -62,7 +62,7 @@ for game_epoch in range(total_game_epoch):
         pairs_label = pairs_label[shuffle]
         # np.save('pairs.npy',pairs)
         # np.save('pairs_label.npy',pairs_label)
-        for batch_size in [4,16,32,64,128]:
+        for batch_size in [16,32,64,128]:
             for epoch in range(epoch_train):
                 print('The next epoch is ',epoch)
                 # shuffle the pairs each epoch
