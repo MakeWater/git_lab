@@ -84,7 +84,7 @@ for game_epoch in range(total_game_epoch):
                                                                         siam.x1: x1,
                                                                         siam.x2: x2,
                                                                         siam.y_true: y_true,
-                                                                        siam.dropout = 0.25
+                                                                        siam.dropout: 0.25
                                                                         })
                     batch_loss_list.append(losses)
                     if steps%1000==0:
@@ -183,7 +183,7 @@ for game_epoch in range(total_game_epoch):
                                                                     siam.x1: x1,
                                                                     siam.x2: x2,
                                                                     siam.y_true: y_true,
-                                                                    siam.dropout = 0.25
+                                                                    siam.dropout: 0.25
                                                                     })
                     batch_loss_list.append(losses)
                     if step_2 % 1000 == 0:
