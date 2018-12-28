@@ -57,13 +57,15 @@ for game_epoch in range(total_game_epoch):
         # NMI_score = NMI(label_pred,label)
         # print('the mean NMI score is:',NMI_score)
         print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
-        shuffle = np.random.permutation(pairs.shape[0])
-        pairs = pairs[shuffle]
-        pairs_label = pairs_label[shuffle]
+
         # np.save('pairs.npy',pairs)
         # np.save('pairs_label.npy',pairs_label)
         for batch_size in [16,32,64,128]:
             for epoch in range(epoch_train):
+                # there should be shuffle each epoch.
+                shuffle = np.random.permutation(pairs.shape[0])
+                pairs = pairs[shuffle]
+                pairs_label = pairs_label[shuffle]
                 print('The next epoch is ',epoch)
                 # shuffle the pairs each epoch
                 batch_loss_list = []
