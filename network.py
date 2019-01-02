@@ -22,7 +22,7 @@ class siamese():
 
         with tf.variable_scope('siamese') as scope:
             self.output1 = self.deepnn(self.x1) # shape:(1000,10) or (1,10)
-            scope.reuse_variables()
+            # scope.reuse_variables()
             self.output2 = self.deepnn(self.x2)
             with tf.name_scope('similarity'):
                 self.similarity = self.predict_similarity(self.output1,self.output2)
