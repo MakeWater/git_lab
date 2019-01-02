@@ -4,5 +4,8 @@
 对获得配对的函数进行了分割，原来是一个函数通过判断，现在分为get_pairs_by_None和get_pairs_by_siamese,功能分开减少函数复杂度。
 其他的小修改：学习率从0.01提高到0.1；batch从64提高到128，每步训练不再计算相似度和输出相似度，因为输出一个batch的相似度往往没有意义。
 
-mnist_lab 由GPU5训练，lab2由GPU6训练，lab3由GPU7训练。
-
+mnist_lab 由GPU5训练，
+lab2由GPU6训练，
+lab3由GPU7训练。
+git_master:4
+git_new_batch:3
