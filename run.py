@@ -12,7 +12,7 @@ import numpy as np
 from sklearn import cluster
 
 from get_pairs import get_pairs_by_None,get_pairs_by_siamese
-import network
+from network import siamese
 from utils import NMI,batch_generator
 
 # 超参数：
@@ -31,7 +31,7 @@ unlabel_data = np.load('mnist.npy').astype(np.float32)
 label = np.load('mnist_lab.npy')[:1000] # for NMI computation
 unlabel_data = unlabel_data[:1000]
 sess = tf.InteractiveSession()
-siam = network.siamese()
+siam = siamese()
 
 
 global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
@@ -51,7 +51,7 @@ for game_epoch in range(total_game_epoch):
     if game_epoch == 0:
         sess.run(tf.global_variables_initializer())
         # merged = tf.summary.merge_all()
-        # pairs, pairs_label, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
+        # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
         pairs = np.load('pairs_raw.npy').astype(np.float32)
         pairs_label = np.load('pairs_raw_label.npy').astype(np.float32)
         # NMI_score = NMI(label_pred,label)
@@ -60,7 +60,7 @@ for game_epoch in range(total_game_epoch):
 
         # np.save('pairs.npy',pairs)
         # np.save('pairs_label.npy',pairs_label)
-        for batch_size in [16,32,64,128]:
+        for batch_size in [128]:
             for epoch in range(epoch_train):
                 # there should be shuffle each epoch.
                 shuffle = np.random.permutation(pairs.shape[0])
@@ -111,8 +111,9 @@ for game_epoch in range(total_game_epoch):
                     W[i][j] = 0.5
                 else:
                     # approch 2:(solve the shape problem by array = np.expand_dims(array,axis=0)
-                    W[i][j] = sess.run(siam.similarity,feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
-                        siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
+                    W[i][j] = sess.run(siam.similarity,
+                        feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
+                                   siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
                     # 矩阵稀疏化：
                     # W[i][j] = 1 if w >= 0.65 else 0
                     if i % 100 == 1 and j % 100 == 1:
@@ -129,7 +130,7 @@ for game_epoch in range(total_game_epoch):
         print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
         # 预测新的对
         # 这里的class_indices可以验证谱聚类的效果,尤其是purf_idx,其实是纯化后的索引。
-        pairs1,pairs_label_1, index_to_pair, label_pred = get_pairs_by_siamese(unlabel_data,W,params) # 验证新矩阵的效果。
+        pairs1, pairs_label_1, class_indices, index_to_pair, label_pred = get_pairs_by_siamese(unlabel_data,W,params) # 验证新矩阵的效果。
         # save pairs data:
         np.save('pairs{}.npy'.format(game_epoch),pairs1)
         np.save('pairs_label_{}.npy'.format(game_epoch),pairs_label_1)

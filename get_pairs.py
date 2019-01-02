@@ -68,15 +68,15 @@ def get_pairs_by_None(data,params):
     # embeded = autoencoder(data)
     embeded = np.load('embeded.npy')
     label_pred = get_label_pred(embeded,params)
-    pairs,pairs_label,index_to_pair = creat_pairs(data,label_pred)
-    return pairs,pairs_label,index_to_pair,label_pred
+    pairs,pairs_label,class_indices,index_to_pair = creat_pairs(data,label_pred)
+    return pairs,pairs_label,class_indices,index_to_pair,label_pred
 
 def get_pairs_by_siamese(data,W,params):
     '''affinity W is computed by siamese'''
     params['affinity'] = 'precomputed'
     label_pred = get_label_pred(W,params)
-    pairs,pairs_label,index_to_pair =  creat_pairs(data,label_pred)
-    return pairs,pairs_label,index_to_pair,label_pred
+    pairs,pairs_label,class_indices,index_to_pair =  creat_pairs(data,label_pred)
+    return pairs,pairs_label,class_indices,index_to_pair,label_pred
 
 def creat_pairs(data,label):
     '''data is raw data,label is predicted by spectral clustering(SC)
@@ -89,7 +89,7 @@ def creat_pairs(data,label):
     display_label(class_indices,mnist_label)
     index_to_pair = strainer_of_classindices(data,class_indices)
 
-    np.save('class_indices.npy',class_indices)
+    # np.save('class_indices.npy',class_indices)
     # np.save('index_to_pair.npy',index_to_pair)
 
     print('######################## SPLIT LINE ######################################')
@@ -130,8 +130,6 @@ def creat_pairs(data,label):
         neg_pairs.append([data[idx1],data[idx2]])
     pos_pairs = np.array(pos_pairs)
     neg_pairs = np.array(neg_pairs)
-    np.save('pos_pairs.npy',pos_pairs) # save pos pairs
-    np.save('neg_pairs.npy',neg_pairs) # save neg pairs ,all for validating.
     pos_lab = np.ones(len(pos_pairs))
     neg_lab = np.zeros(len(neg_pairs))
     pairs = np.concatenate((pos_pairs,neg_pairs),axis=0)
@@ -140,7 +138,7 @@ def creat_pairs(data,label):
     pairs = pairs[shuffle]
     pairs_lab = pairs_lab[shuffle]
     print('pairs shape is:',pairs.shape)
-    return pairs,pairs_lab,index_to_pair
+    return pairs,pairs_lab,class_indices,index_to_pair
 
 def get_pairs(data,W,params):
     # data = np.load('mnist.npy')[:1000]
