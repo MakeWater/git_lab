@@ -130,8 +130,6 @@ def creat_pairs(data,label):
         neg_pairs.append([data[idx1],data[idx2]])
     pos_pairs = np.array(pos_pairs)
     neg_pairs = np.array(neg_pairs)
-    np.save('pos_pairs.npy',pos_pairs) # save pos pairs
-    np.save('neg_pairs.npy',neg_pairs) # save neg pairs ,all for validating.
     pos_lab = np.ones(len(pos_pairs))
     neg_lab = np.zeros(len(neg_pairs))
     pairs = np.concatenate((pos_pairs,neg_pairs),axis=0)
