@@ -13,7 +13,7 @@ from sklearn import cluster
 
 from get_pairs import get_pairs_by_None,get_pairs_by_siamese
 from network import siamese
-from utils import NMI,batch_generator
+from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss
 
 # 超参数：
 params = {'n_clusters':23, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
@@ -31,17 +31,27 @@ unlabel_data = np.load('mnist.npy').astype(np.float32)
 label = np.load('mnist_lab.npy')[:1000] # for NMI computation
 unlabel_data = unlabel_data[:1000]
 sess = tf.InteractiveSession()
+
 siam = siamese()
 
+# inputs:
+left = tf.placeholder(tf.float32,[None,784],name='left_input')
+right = tf.placeholder(tf.float32,[None,784],name='right_input')
+y_ = tf.placeholder(tf.float32,[None],name='target_similarity_of_pairs')
+
+left_output = deepnn(left)
+right_output = deepnn(right)
+simi = predict_similarity(left_output,right_output)
+loss = contro_loss(simi,y_)
 
 global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
 with tf.name_scope('learning_rate'):
-    learning_rate_0 = tf.Variable(0.1,name='initial_lr')
+    learning_rate_0 = tf.Variable(0.01,name='initial_lr')
     learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,100,0.96)
     # tf.summary.scalar('learning_rate',learning_rate)
 
-with tf.name_scope('loss'):
-    loss = siam.loss
+# with tf.name_scope('loss'):
+#     loss = siam.loss
     # tf.summary.scalar('loss',loss)
 
 # train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
@@ -75,19 +85,13 @@ for game_epoch in range(total_game_epoch):
                 for ([batch_x1,batch_x2],y_true) in data_generator:# get batch data from data generator
                     x1 = batch_x1
                     x2 = batch_x2
-                    y_true = y_true
-                # for i in range(pairs.shape[0]):
-                #     x1 = np.expand_dims(pairs[i][0],axis=0)
-                #     x2 = np.expand_dims(pairs[i][1],axis=0)
-                #     y_true = np.expand_dims(pairs_label[i],axis=0)
-
                     _, losses = sess.run([train_step,loss], 
                                                             feed_dict={
-                                                                        siam.x1: x1,
-                                                                        siam.x2: x2,
-                                                                        siam.y_true: y_true})
+                                                                        left: x1,
+                                                                        right: x2,
+                                                                        y_: y_true})
                     batch_loss_list.append(losses)
-                    if steps%1000==0:
+                    if steps%100==0:
                         mean_loss = np.mean(batch_loss_list)
                         # train_writer.add_summary(summary,steps)
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.
@@ -111,9 +115,9 @@ for game_epoch in range(total_game_epoch):
                     W[i][j] = 0.5
                 else:
                     # approch 2:(solve the shape problem by array = np.expand_dims(array,axis=0)
-                    W[i][j] = sess.run(siam.similarity,
-                        feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
-                                   siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
+                    W[i][j] = sess.run(simi,
+                        feed_dict={left:np.expand_dims(unlabel_data[i],axis=0),
+                                   right:np.expand_dims(unlabel_data[j],axis=0)})
                     # 矩阵稀疏化：
                     # W[i][j] = 1 if w >= 0.65 else 0
                     if i % 100 == 1 and j % 100 == 1:
@@ -181,11 +185,11 @@ for game_epoch in range(total_game_epoch):
                     
                     _, losses= sess.run([train_step,loss], 
                                                         feed_dict={
-                                                                    siam.x1: x1,
-                                                                    siam.x2: x2,
-                                                                    siam.y_true: y_true})
+                                                                    left: x1,
+                                                                    right: x2,
+                                                                    y_: y_true})
                     batch_loss_list.append(losses)
-                    if step_2 % 1000 == 0:
+                    if step_2 % 100 == 0:
                         mean_loss = np.mean(batch_loss_list)
                         # test_writer.add_summary(summary,step_2)
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.

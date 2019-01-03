@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import random
 import numpy as np
+import tensorflow as tf
 from sklearn.metrics import normalized_mutual_info_score as nmi
 
 def NMI(label_pred,label):
