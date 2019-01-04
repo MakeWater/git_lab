@@ -30,6 +30,8 @@ log_dir = 'log' # 如果log目录不存在于当前目录，则在当前文件�
 unlabel_data = np.load('mnist.npy').astype(np.float32)
 label = np.load('mnist_lab.npy')[:1000] # for NMI computation
 unlabel_data = unlabel_data[:1000]
+
+test_100_data = np.load('test_100.npy')
 sess = tf.InteractiveSession()
 
 siam = siamese()
@@ -132,7 +134,13 @@ for game_epoch in range(total_game_epoch):
         # 转置成对称阵
         W = W + W.transpose()
         np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
-
+        W_test = np.zeros(10,10)
+        for i in range(10):
+            for j in range(10):
+                W_test[i][j] = sess.run(simi,
+                        feed_dict={left:np.expand_dims(test_100_data[i],axis=0),
+                                   right:np.expand_dims(test_100_data[j],axis=0)})
+        np.save('W_test.npy',W_test)
         print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
         # 预测新的对
         # 这里的class_indices可以验证谱聚类的效果,尤其是purf_idx,其实是纯化后的索引。
