@@ -13,12 +13,12 @@ from sklearn import cluster
 
 from get_pairs import get_pairs_by_None,get_pairs_by_siamese
 from network import siamese
-from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss
+from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss,contrastive_loss,mnist_model
 
 # 超参数：
 params = {'n_clusters':23, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 3
-epoch_train = 20
+epoch_train = 30
 epoch_val = 20
 # batch_size = 128
 
@@ -37,12 +37,14 @@ siam = siamese()
 # inputs:
 left = tf.placeholder(tf.float32,[None,784],name='left_input')
 right = tf.placeholder(tf.float32,[None,784],name='right_input')
-y_ = tf.placeholder(tf.float32,[None],name='target_similarity_of_pairs')
+y_ = tf.placeholder(tf.float32,[None,1],name='target_similarity_of_pairs')
 
-left_output = deepnn(left)
-right_output = deepnn(right)
+left_output = mnist_model(left)
+right_output = mnist_model(right)
 simi = predict_similarity(left_output,right_output)
-loss = contro_loss(simi,y_)
+loss = tf.losses.cosine_distance(simi,y_)
+# loss = contro_loss(left_output,right_output,y_)
+# loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
 
 global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
 with tf.name_scope('learning_rate'):
@@ -64,13 +66,15 @@ for game_epoch in range(total_game_epoch):
         # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
         pairs = np.load('pairs_raw.npy').astype(np.float32)
         pairs_label = np.load('pairs_raw_label.npy').astype(np.float32)
+        pairs = pairs[:1000]
+        pairs_label = pairs_label[:1000]
         # NMI_score = NMI(label_pred,label)
         # print('the mean NMI score is:',NMI_score)
         print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
 
         # np.save('pairs.npy',pairs)
         # np.save('pairs_label.npy',pairs_label)
-        for batch_size in [128]:
+        for batch_size in [16]:
             for epoch in range(epoch_train):
                 # there should be shuffle each epoch.
                 shuffle = np.random.permutation(pairs.shape[0])
@@ -85,13 +89,14 @@ for game_epoch in range(total_game_epoch):
                 for ([batch_x1,batch_x2],y_true) in data_generator:# get batch data from data generator
                     x1 = batch_x1
                     x2 = batch_x2
+                    y_true = np.expand_dims(y_true,-1)
                     _, losses = sess.run([train_step,loss], 
                                                             feed_dict={
                                                                         left: x1,
                                                                         right: x2,
                                                                         y_: y_true})
                     batch_loss_list.append(losses)
-                    if steps%100==0:
+                    if steps%10==0:
                         mean_loss = np.mean(batch_loss_list)
                         # train_writer.add_summary(summary,steps)
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.
@@ -118,17 +123,18 @@ for game_epoch in range(total_game_epoch):
                     W[i][j] = sess.run(simi,
                         feed_dict={left:np.expand_dims(unlabel_data[i],axis=0),
                                    right:np.expand_dims(unlabel_data[j],axis=0)})
-                    # 矩阵稀疏化：
-                    # W[i][j] = 1 if w >= 0.65 else 0
-                    if i % 100 == 1 and j % 100 == 1:
-                        i_idx = np.random.choice(i)
-                        j_idx = np.random.choice(j)
-                        print('the similarity between {} and {} is {}'.format(i_idx,j_idx,W[i_idx][j_idx]))
         elapsed = (time.clock() - start)
         print('Time used to compute affinity :',elapsed)
         np.save('W_{}_0.npy'.format(game_epoch),W) # 转置前的W 
         # 转置成对称阵
         W = W + W.transpose()
+        for i in range(n):
+            for j in range(n):
+                if i%100==0 and j%100==0:
+                    sample = random.sample(np.arange(j),10)
+                    for idx in sample:
+                        print('the similarity between {} and {} is {}'.format(i,idx,W[i][idx]))
+
         np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
 
         print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
@@ -175,7 +181,7 @@ for game_epoch in range(total_game_epoch):
                 for ([batch_x1,batch_x2],y_true) in data_generator2:
                     x1 = batch_x1
                     x2 = batch_x2
-                    y_true = y_true
+                    y_true = np.expand_dims(y_true,-1)
 
                 # for i in range(pairs1.shape[0]):
                 #     # 逐对的喂入数据：

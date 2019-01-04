@@ -33,6 +33,59 @@ def batch_generator(pairs,pairs_label,batch_size):
         y = pairs_label[batch_slice]
         yield ([x1,x2],y)
 
+
+def contro_loss(embedding1,embedding2,pairs_label):
+
+    '''
+    总结下来对比损失的特点：首先看标签，然后标签为1是正对，负对部分损失为0，最小化总损失就是最小化类内损失(within_loss)部分，
+    让s逼近margin的过程，是个增大的过程；标签为0是负对，正对部分损失为0，最小化总损失就是最小化between_loss，而且此时between_loss就是s，
+    所以这个过程也是最小化s的过程，也就使不相似的对更不相似了.
+    最小化类内损失的是一个增大s的过程，最小化类间损失的是一个减少s的过程。
+    '''
+    cosi = tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
+                tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1)),
+                            tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1)) ) ) ,keep_dims=True) # 求的是一个batch的平均相似度
+    s = (cosi+1)/2.0
+    # one = tf.constant(1.0)
+    margin = 1.0
+    y_true = pairs_label
+
+    # 类内损失：
+    max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
+    #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
+    within_loss = tf.multiply(y_true,max_part) 
+
+    # 类间损失：
+    #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
+    between_loss = tf.multiply(1.0-y_true,s) 
+
+    # 总体损失（要最小化）：
+    loss = 0.5*tf.reduce_mean(within_loss+between_loss) 
+    return loss
+
+def contrastive_loss(model1, model2, y, margin):
+    with tf.name_scope("contrastive-loss"):
+        distance = tf.sqrt(tf.reduce_sum(tf.pow(model1 - model2, 2), 1, keep_dims=True))
+        similarity = y * tf.square(distance)                                           # keep the similar label (1) close to each other
+        dissimilarity = (1 - y) * tf.square(tf.maximum((margin - distance), 0))        # give penalty to dissimilar label if the distance is bigger than margin
+        return tf.reduce_mean(dissimilarity + similarity) / 2
+
+def predict_similarity(embedding1,embedding2):
+    '''
+    要注意的是当样本batch_size为1时，用这个当做函数来计算两两样本之间的相似度需要注意最后求均值的axis问题
+    cosi shape:(batch_size,1)
+    '''
+    # A, B分别是两个样本经过网络传播之后的提取后的特征/embedding
+    # 求两个向量的余弦夹角：A*B/|A|*|B|
+    # 求每对样本之间的相似度，即使一个batch_size也是先求各自的再求平均
+    cosi = tf.divide(
+                    tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
+                    tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1)),
+                                tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
+    cosi = (cosi+1)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
+    # cosi batch_size shape：（batch_size，1）
+    return cosi
+
 def deepnn(x):
 
     # input reshape to [batch_size,28,28,channel]
@@ -100,43 +153,35 @@ def conv2d(x,w):
 def max_pool_2x2(x):
     return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1], padding='SAME')
 
-def contro_loss(similarity_by_network,pairs_label):
+def mnist_model(input, reuse=tf.AUTO_REUSE):
+    x_image = tf.reshape(input,[-1,28,28,1])
+    with tf.name_scope("model"):
+        with tf.variable_scope("conv1") as scope:
+            net = tf.contrib.layers.conv2d(x_image, 32, [7, 7], activation_fn=tf.nn.relu, padding='SAME',
+                weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+            net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME') # 14x14
 
-    '''
-    总结下来对比损失的特点：首先看标签，然后标签为1是正对，负对部分损失为0，最小化总损失就是最小化类内损失(within_loss)部分，
-    让s逼近margin的过程，是个增大的过程；标签为0是负对，正对部分损失为0，最小化总损失就是最小化between_loss，而且此时between_loss就是s，
-    所以这个过程也是最小化s的过程，也就使不相似的对更不相似了.
-    最小化类内损失的是一个增大s的过程，最小化类间损失的是一个减少s的过程。
-    '''
-    
-    s = similarity_by_network
-    # one = tf.constant(1.0)
-    margin = 1.0
-    y_true = pairs_label
+        with tf.variable_scope("conv2") as scope:
+            net = tf.contrib.layers.conv2d(net, 64, [5, 5], activation_fn=tf.nn.relu, padding='SAME',
+                weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+            net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME') # 7x7
 
-    # 类内损失：
-    max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
-    #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
-    within_loss = tf.multiply(y_true,max_part) 
+        with tf.variable_scope("conv3") as scope:
+            net = tf.contrib.layers.conv2d(net, 128, [3, 3], activation_fn=tf.nn.relu, padding='SAME',
+                weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+            net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME') # 7x7
 
-    # 类间损失：
-    #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
-    between_loss = tf.multiply(1.0-y_true,s) 
+        with tf.variable_scope("conv4") as scope:
+            net = tf.contrib.layers.conv2d(net, 256, [1, 1], activation_fn=tf.nn.relu, padding='SAME',
+                weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+            net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME') # 7x7
 
-    # 总体损失（要最小化）：
-    loss = 0.5*tf.reduce_mean(within_loss+between_loss) 
-    return loss
-
-def predict_similarity(embedding1,embedding2):
-    '''
-    要注意的是当样本batch_size为1时，用这个当做函数来计算两两样本之间的相似度需要注意最后求均值的axis问题
-    '''
-    # A, B分别是两个样本经过网络传播之后的提取后的特征/embedding
-    # 求两个向量的余弦夹角：A*B/|A|*|B|
-    # 求每对样本之间的相似度，即使一个batch_size也是先求各自的再求平均
-    cosi = tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
-                tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1)),
-                tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True)))))
-    cosi = (cosi+1)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
-    # cosi batch_size shape：（batch_size，1）
-    return cosi
+        with tf.variable_scope("conv5") as scope:
+            net = tf.contrib.layers.conv2d(net, 2, [1, 1], activation_fn=None, padding='SAME',
+                weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+            net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME') # 7x7
+        with tf.variable_scope("flatten"):
+            net = tf.contrib.layers.flatten(net,scope=scope) # batch_size x 7*7*2 > batch_size x 98
+        with tf.variable_scope("fully_connected"):
+            net = tf.contrib.layers.fully_connected(net,10,activation_fn=None, scope=scope,reuse=reuse)
+    return net
