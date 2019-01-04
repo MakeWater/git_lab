@@ -80,10 +80,10 @@ def predict_similarity(embedding1,embedding2):
     # 求每对样本之间的相似度，即使一个batch_size也是先求各自的再求平均
     cosi = tf.divide(
                     tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
-                    tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1)),
+                    tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
                                 tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
-    cosi = (cosi+1)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
-    # cosi batch_size shape：（batch_size，1）
+    cosi = (cosi+1.0)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
+    # cosi batch_size 2Dshape：（batch_size，1）
     return cosi
 
 def deepnn(x):
@@ -180,8 +180,11 @@ def mnist_model(input, reuse=tf.AUTO_REUSE):
             net = tf.contrib.layers.conv2d(net, 2, [1, 1], activation_fn=None, padding='SAME',
                 weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
             net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME') # 7x7
-        with tf.variable_scope("flatten"):
-            net = tf.contrib.layers.flatten(net,scope=scope) # batch_size x 7*7*2 > batch_size x 98
-        with tf.variable_scope("fully_connected"):
-            net = tf.contrib.layers.fully_connected(net,10,activation_fn=None, scope=scope,reuse=reuse)
+        
+        net = tf.contrib.layers.flatten(net) # batch_size x 7*7*2 > batch_size x 98
+        # shape = tf.shape(net)
+        # print('the net shape is:',shape)
+        # with tf.variable_scope("fully_connected"):
+        #     net = tf.contrib.layers.fully_connected(net,10,weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
+        #         activation_fn=None, scope=scope,reuse=)
     return net

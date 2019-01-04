@@ -42,7 +42,7 @@ y_ = tf.placeholder(tf.float32,[None,1],name='target_similarity_of_pairs')
 left_output = mnist_model(left)
 right_output = mnist_model(right)
 simi = predict_similarity(left_output,right_output)
-loss = tf.losses.cosine_distance(simi,y_)
+loss = tf.losses.cosine_distance(simi,y_,axis=0)
 # loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
 
