@@ -16,7 +16,7 @@ from network import siamese
 from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss,contrastive_loss,mnist_model
 
 # 超参数：
-params = {'n_clusters':23, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
+params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 3
 epoch_train = 30
 epoch_val = 20
@@ -66,8 +66,8 @@ for game_epoch in range(total_game_epoch):
         # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
         pairs = np.load('pairs_raw.npy').astype(np.float32)
         pairs_label = np.load('pairs_raw_label.npy').astype(np.float32)
-        pairs = pairs[:1000]
-        pairs_label = pairs_label[:1000]
+        # pairs = pairs[:1000]
+        # pairs_label = pairs_label[:1000]
         # NMI_score = NMI(label_pred,label)
         # print('the mean NMI score is:',NMI_score)
         print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
@@ -123,18 +123,14 @@ for game_epoch in range(total_game_epoch):
                     W[i][j] = sess.run(simi,
                         feed_dict={left:np.expand_dims(unlabel_data[i],axis=0),
                                    right:np.expand_dims(unlabel_data[j],axis=0)})
+                    if j%100==1:
+                        print('the similarity between {} and {} is {}'.format(i,j,W[i][j]))
         elapsed = (time.clock() - start)
+
         print('Time used to compute affinity :',elapsed)
         np.save('W_{}_0.npy'.format(game_epoch),W) # 转置前的W 
         # 转置成对称阵
         W = W + W.transpose()
-        for i in range(n):
-            for j in range(n):
-                if i%100==0 and j%100==0:
-                    sample = random.sample(np.arange(j),10)
-                    for idx in sample:
-                        print('the similarity between {} and {} is {}'.format(i,idx,W[i][idx]))
-
         np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
 
         print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')

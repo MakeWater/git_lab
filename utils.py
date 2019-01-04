@@ -51,7 +51,7 @@ def contro_loss(embedding1,embedding2,pairs_label):
     margin = 1.0
     diff_part = margin - s
 
-    y_true = pairs_label
+    y_true = pairs_label # y_true = part of within-class part of similarity loss.
     # 类内损失：
     # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
     #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
@@ -59,10 +59,11 @@ def contro_loss(embedding1,embedding2,pairs_label):
 
     # 类间损失：
     #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
+    between_part = margin - y_true
     between_loss = tf.multiply(1.0-y_true,s) 
 
     # 总体损失（要最小化）：
-    loss = tf.reduce_mean(within_loss+between_loss,axis=0,keep_dims=True) 
+    loss = within_loss+between_loss
     return loss
 
 def contrastive_loss(model1, model2, y, margin):
