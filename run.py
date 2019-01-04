@@ -42,8 +42,8 @@ y_ = tf.placeholder(tf.float32,[None,1],name='target_similarity_of_pairs')
 left_output = mnist_model(left)
 right_output = mnist_model(right)
 simi = predict_similarity(left_output,right_output)
-loss = tf.losses.cosine_distance(simi,y_,axis=0)
-# loss = contro_loss(left_output,right_output,y_)
+# loss = tf.losses.cosine_distance(simi,y_,axis=0)
+loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
 
 global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
