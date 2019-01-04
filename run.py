@@ -27,11 +27,11 @@ if not os.path.exists('log'):
 log_dir = 'log' # 如果log目录不存在于当前目录，则在当前文件夹创建一个“log”目录并赋值给log_dir对象
 
 # unlabel_data, _ = get_data()
-unlabel_data = np.load('mnist.npy').astype(np.float32)
+mnist_data = np.load('mnist.npy').astype(np.float32)
 label = np.load('mnist_lab.npy')[:1000] # for NMI computation
-unlabel_data = unlabel_data[:1000]
+unlabel_data = mnist_data[:1000]
 
-test_100_data = np.load('test_100.npy')
+test_data_index = np.load('test_data_index.npy')
 sess = tf.InteractiveSession()
 
 siam = siamese()
@@ -138,8 +138,8 @@ for game_epoch in range(total_game_epoch):
         for i in range(10):
             for j in range(10):
                 W_test[i][j] = sess.run(simi,
-                        feed_dict={left:np.expand_dims(test_100_data[i],axis=0),
-                                   right:np.expand_dims(test_100_data[j],axis=0)})
+                        feed_dict={left:np.expand_dims(mnist_data[test_data_index[i]],axis=0),
+                                   right:np.expand_dims(mnist_data[test_data_index[j]],axis=0)})
         np.save('W_test.npy',W_test)
         print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
         # 预测新的对
