@@ -42,25 +42,27 @@ def contro_loss(embedding1,embedding2,pairs_label):
     所以这个过程也是最小化s的过程，也就使不相似的对更不相似了.
     最小化类内损失的是一个增大s的过程，最小化类间损失的是一个减少s的过程。
     '''
-    cosi = tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
-                tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1)),
-                            tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1)) ) ) ,keep_dims=True) # 求的是一个batch的平均相似度
-    s = (cosi+1)/2.0
+    cosi = tf.divide(
+                    tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
+                    tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
+                                tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
+    s = (cosi+1.0)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
     # one = tf.constant(1.0)
     margin = 1.0
-    y_true = pairs_label
+    diff_part = margin - s
 
+    y_true = pairs_label
     # 类内损失：
-    max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
+    # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
     #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
-    within_loss = tf.multiply(y_true,max_part) 
+    within_loss = tf.multiply(y_true,diff_part) 
 
     # 类间损失：
     #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
     between_loss = tf.multiply(1.0-y_true,s) 
 
     # 总体损失（要最小化）：
-    loss = 0.5*tf.reduce_mean(within_loss+between_loss) 
+    loss = tf.reduce_mean(within_loss+between_loss,axis=0,keep_dims=True) 
     return loss
 
 def contrastive_loss(model1, model2, y, margin):
