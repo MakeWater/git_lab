@@ -31,7 +31,8 @@ mnist_data = np.load('mnist.npy').astype(np.float32)
 label = np.load('mnist_lab.npy')[:1000] # for NMI computation
 unlabel_data = mnist_data[:1000]
 
-test_data_index = np.load('test_data_index.npy')
+# test_100_data = np.load('test_100_data.npy')
+test_100 = np.load('test_100.npy')
 sess = tf.InteractiveSession()
 
 siam = siamese()
@@ -138,8 +139,8 @@ for game_epoch in range(total_game_epoch):
         for i in range(10):
             for j in range(10):
                 W_test[i][j] = sess.run(simi,
-                        feed_dict={left:np.expand_dims(mnist_data[test_data_index[i]],axis=0),
-                                   right:np.expand_dims(mnist_data[test_data_index[j]],axis=0)})
+                        feed_dict={left:np.expand_dims(test_100[i], axis=0),
+                                   right:np.expand_dims(test_100[j], axis=0)})
         np.save('W_test.npy',W_test)
         print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
         # 预测新的对
