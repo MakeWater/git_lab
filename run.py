@@ -18,7 +18,7 @@ from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss,cont
 # 超参数：
 params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 3
-epoch_train = 30
+epoch_train = 50
 epoch_val = 20
 # batch_size = 128
 
@@ -76,7 +76,7 @@ for game_epoch in range(total_game_epoch):
 
         # np.save('pairs.npy',pairs)
         # np.save('pairs_label.npy',pairs_label)
-        for batch_size in [16]:
+        for batch_size in [32]:
             for epoch in range(epoch_train):
                 # there should be shuffle each epoch.
                 shuffle = np.random.permutation(pairs.shape[0])
