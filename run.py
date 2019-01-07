@@ -18,7 +18,7 @@ from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss,cont
 # 超参数：
 params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 3
-epoch_train = 50
+epoch_train = 100
 epoch_val = 20
 # batch_size = 128
 
@@ -98,8 +98,9 @@ for game_epoch in range(total_game_epoch):
                                                                         left: x1,
                                                                         right: x2,
                                                                         y_: y_true})
-                    batch_loss_list.append(losses)
-                    if steps%10==0:
+                    batch_loss_list.append(np.array(losses))
+                    if steps%10==1:
+
                         mean_loss = np.mean(batch_loss_list)
                         # train_writer.add_summary(summary,steps)
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.
