@@ -34,14 +34,13 @@ unlabel_data = mnist_data[:1000]
 # test_100_data = np.load('test_100_data.npy')
 test_100 = np.load('test_100.npy')
 sess = tf.InteractiveSession()
-
 siam = siamese()
 
 # inputs:
 left = tf.placeholder(tf.float32,[None,784],name='left_input')
 right = tf.placeholder(tf.float32,[None,784],name='right_input')
 y_ = tf.placeholder(tf.float32,[None,1],name='target_similarity_of_pairs')
-
+  
 left_output = deepnn(left)
 right_output = deepnn(right)
 simi = predict_similarity(left_output,right_output)
