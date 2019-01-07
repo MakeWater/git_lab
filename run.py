@@ -59,7 +59,7 @@ with tf.name_scope('learning_rate'):
     # tf.summary.scalar('loss',loss)
 
 # train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
-train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
+train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
 
 for game_epoch in range(total_game_epoch):
     if game_epoch == 0:
