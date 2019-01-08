@@ -46,6 +46,8 @@ def contro_loss(embedding1,embedding2,pairs_label):
                     tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
                     tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
                                 tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
+
+    # cosi = tf.linalg.l2_normalized(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),axis=1)
     s = (cosi+1.0)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
     # one = tf.constant(1.0)
     margin = 1.0
