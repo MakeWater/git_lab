@@ -42,12 +42,12 @@ def contro_loss(embedding1,embedding2,pairs_label):
     所以这个过程也是最小化s的过程，也就使不相似的对更不相似了.
     最小化类内损失的是一个增大s的过程，最小化类间损失的是一个减少s的过程。
     '''
-    cosi = tf.divide(
-                    tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
-                    tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
-                                tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
+    # cosi = tf.divide(
+    #                 tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
+    #                 tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
+    #                             tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
 
-    # cosi = tf.linalg.l2_normalized(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),axis=1)
+    cosi = tf.linalg.l2_normalized(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),axis=1)
     s = (cosi+1.0)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
     # one = tf.constant(1.0)
     margin = 1.0
@@ -83,10 +83,11 @@ def predict_similarity(embedding1,embedding2):
     # A, B分别是两个样本经过网络传播之后的提取后的特征/embedding
     # 求两个向量的余弦夹角：A*B/|A|*|B|
     # 求每对样本之间的相似度，即使一个batch_size也是先求各自的再求平均
-    cosi = tf.divide(
-                    tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
-                    tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
-                                tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
+    # cosi = tf.divide(
+    #                 tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
+    #                 tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
+    #                             tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
+    cosi = tf.linalg.l2_normalized(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),axis=1)
     cosi = (cosi+1.0)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
     # cosi batch_size 2Dshape：（batch_size，1）
     return cosi
