@@ -17,8 +17,8 @@ from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss,cont
 
 # 超参数：
 params = {'n_clusters':23, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
-total_game_epoch = 3
-epoch_train = 50
+total_game_epoch = 2
+epoch_train = 20
 epoch_val = 10
 # batch_size = 128
 
@@ -60,23 +60,23 @@ with tf.name_scope('loss'):
 
 # train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
 train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
+for batch_size in [2,4,8,16,32]:
+    for game_epoch in range(total_game_epoch):
+        if game_epoch == 0:
+            sess.run(tf.global_variables_initializer())
+            # merged = tf.summary.merge_all()
+            # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
+            pairs = np.load('pairs_raw.npy').astype(np.float32)
+            pairs_label = np.load('pairs_raw_label.npy').astype(np.float32)
+            # pairs = pairs[:1000]
+            # pairs_label = pairs_label[:1000]
+            # NMI_score = NMI(label_pred,label)
+            # print('the mean NMI score is:',NMI_score)
+            print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
 
-for game_epoch in range(total_game_epoch):
-    if game_epoch == 0:
-        sess.run(tf.global_variables_initializer())
-        # merged = tf.summary.merge_all()
-        # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
-        pairs = np.load('pairs_raw.npy').astype(np.float32)
-        pairs_label = np.load('pairs_raw_label.npy').astype(np.float32)
-        # pairs = pairs[:1000]
-        # pairs_label = pairs_label[:1000]
-        # NMI_score = NMI(label_pred,label)
-        # print('the mean NMI score is:',NMI_score)
-        print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
+            # np.save('pairs.npy',pairs)
+            # np.save('pairs_label.npy',pairs_label)
 
-        # np.save('pairs.npy',pairs)
-        # np.save('pairs_label.npy',pairs_label)
-        for batch_size in [8,16,32]:
             for epoch in range(epoch_train):
                 # there should be shuffle each epoch.
                 shuffle = np.random.permutation(pairs.shape[0])
@@ -109,43 +109,45 @@ for game_epoch in range(total_game_epoch):
             # train_writer.close()
 
 
-    #################################################### 新的一个循环 ###################################################
+        #################################################### 新的一个循环 ###################################################
 
-    elif game_epoch > 0:
-        # 1、准备数据：W，pairs，pairs label, 修改params
-        # compute the affinity matrix by siamese:
-        n = len(unlabel_data)
-        W = np.zeros((n,n))
-        start = time.clock()
-        for i in range(n):
-            for j in range(i,n):
-                if i == j:
-                    W[i][j] = 0.5
-                else:
-                    # approch 2:(solve the shape problem by array = np.expand_dims(array,axis=0)
-                    W[i][j] = sess.run(siam.similarity,
-                        feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
-                                   siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
-                    if j%100==1:
-                        print('the similarity between {} and {} is {}'.format(i,j,W[i][j]))
-        elapsed = (time.clock() - start)
-        print('Time used to compute affinity :',elapsed)
+        elif game_epoch > 0:
+            # 1、准备数据：W，pairs，pairs label, 修改params
+            # compute the affinity matrix by siamese:
+            n = len(unlabel_data)
+            W = np.zeros((n,n))
+            start = time.clock()
+            for i in range(n):
+                for j in range(i,n):
+                    if i == j:
+                        W[i][j] = 0.5
+                    else:
+                        # approch 2:(solve the shape problem by array = np.expand_dims(array,axis=0)
+                        W[i][j] = sess.run(siam.similarity,
+                            feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
+                                       siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
+                        if j%100==1:
+                            print('the similarity between {} and {} is {}'.format(i,j,W[i][j]))
+            elapsed = (time.clock() - start)
+            print('Time used to compute affinity :',elapsed)
 
-        np.save('W_{}_0.npy'.format(game_epoch),W) # 转置前的W 
-        # 转置成对称阵
-        W = W + W.transpose()
-        np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
-        W_test = np.zeros((100,100),dtype=np.float64)
-        for i in range(100):
-            for j in range(100):
-                if i==j:
-                    W_test[i][j] = 1
-                else:
-                    W_test[i][j] = sess.run(siam.similarity,
-                            feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
-                                       siam.x2:np.expand_dims(test_100[j], axis=0)})
-        np.save('W_test.npy',W_test)
-        print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
+            np.save('W_{}_0.npy'.format(game_epoch),W) # 转置前的W 
+            # 转置成对称阵
+            W = W + W.transpose()
+            np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
+            W_test = np.zeros((100,100),dtype=np.float64)
+            for i in range(100):
+                for j in range(100):
+                    if i==j:
+                        W_test[i][j] = 1
+                    else:
+                        W_test[i][j] = sess.run(siam.similarity,
+                                feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
+                                           siam.x2:np.expand_dims(test_100[j], axis=0)})
+            np.save('W_test_batch_size{}.npy'.format(batch_size),W_test)
+            print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
+
+        '''
         # 预测新的对
         # 这里的class_indices可以验证谱聚类的效果,尤其是purf_idx,其实是纯化后的索引。
         pairs1, pairs_label_1, class_indices, index_to_pair, label_pred = get_pairs_by_siamese(unlabel_data,W,params) # 验证新矩阵的效果。
@@ -210,4 +212,5 @@ for game_epoch in range(total_game_epoch):
                         print('the game_epoch is %d,epoch is %d,step is %d, batch_size is %d, mean loss is %.3f' % 
                             (game_epoch, epoch2, step_2, batch_size, mean_loss))
                     step_2 += 1
+        '''
 print('Done Training!')
