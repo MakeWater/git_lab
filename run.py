@@ -16,10 +16,10 @@ from network import siamese
 from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss,contrastive_loss,mnist_model
 
 # 超参数：
-params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
+params = {'n_clusters':23, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 3
-epoch_train = 100
-epoch_val = 20
+epoch_train = 50
+epoch_val = 10
 # batch_size = 128
 
 if not os.path.exists('log'):
@@ -36,16 +36,16 @@ test_100 = np.load('test_100.npy')
 sess = tf.InteractiveSession()
 siam = siamese()
 
-# inputs:
-left = tf.placeholder(tf.float32,[None,784],name='left_input')
-right = tf.placeholder(tf.float32,[None,784],name='right_input')
-y_ = tf.placeholder(tf.float32,[None,1],name='target_similarity_of_pairs')
+# # inputs:
+# left = tf.placeholder(tf.float32,[None,784],name='left_input')
+# right = tf.placeholder(tf.float32,[None,784],name='right_input')
+# y_ = tf.placeholder(tf.float32,[None,1],name='target_similarity_of_pairs')
   
-left_output = deepnn(left)
-right_output = deepnn(right)
-simi = predict_similarity(left_output,right_output)
+# left_output = deepnn(left)
+# right_output = deepnn(right)
+# simi = predict_similarity(left_output,right_output)
 # loss = tf.losses.cosine_distance(simi,y_,axis=0)
-loss = contro_loss(left_output,right_output,y_)
+# loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
 
 global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
@@ -54,8 +54,8 @@ with tf.name_scope('learning_rate'):
     learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,1000,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
     # tf.summary.scalar('learning_rate',learning_rate)
 
-# with tf.name_scope('loss'):
-#     loss = siam.loss
+with tf.name_scope('loss'):
+    loss = siam.loss
     # tf.summary.scalar('loss',loss)
 
 # train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
@@ -76,7 +76,7 @@ for game_epoch in range(total_game_epoch):
 
         # np.save('pairs.npy',pairs)
         # np.save('pairs_label.npy',pairs_label)
-        for batch_size in [64]:
+        for batch_size in [8,16,32]:
             for epoch in range(epoch_train):
                 # there should be shuffle each epoch.
                 shuffle = np.random.permutation(pairs.shape[0])
@@ -94,11 +94,11 @@ for game_epoch in range(total_game_epoch):
                     y_true = np.expand_dims(y_true,-1)
                     _, losses = sess.run([train_step,loss], 
                                                             feed_dict={
-                                                                        left: x1,
-                                                                        right: x2,
-                                                                        y_: y_true})
+                                                                        siam.x1: x1,
+                                                                        siam.x2: x2,
+                                                                        siam.y_true: y_true})
                     batch_loss_list.append(np.array(losses))
-                    if steps%10==1:
+                    if steps%100==1:
 
                         mean_loss = np.mean(batch_loss_list)
                         # train_writer.add_summary(summary,steps)
@@ -123,9 +123,9 @@ for game_epoch in range(total_game_epoch):
                     W[i][j] = 0.5
                 else:
                     # approch 2:(solve the shape problem by array = np.expand_dims(array,axis=0)
-                    W[i][j] = sess.run(simi,
-                        feed_dict={left:np.expand_dims(unlabel_data[i],axis=0),
-                                   right:np.expand_dims(unlabel_data[j],axis=0)})
+                    W[i][j] = sess.run(siam.similarity,
+                        feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
+                                   siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
                     if j%100==1:
                         print('the similarity between {} and {} is {}'.format(i,j,W[i][j]))
         elapsed = (time.clock() - start)
@@ -141,9 +141,9 @@ for game_epoch in range(total_game_epoch):
                 if i==j:
                     W_test[i][j] = 1
                 else:
-                    W_test[i][j] = sess.run(simi,
-                            feed_dict={left:np.expand_dims(test_100[i], axis=0),
-                                       right:np.expand_dims(test_100[j], axis=0)})
+                    W_test[i][j] = sess.run(siam.similarity,
+                            feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
+                                       siam.x2:np.expand_dims(test_100[j], axis=0)})
         np.save('W_test.npy',W_test)
         print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
         # 预测新的对
@@ -199,9 +199,9 @@ for game_epoch in range(total_game_epoch):
                     
                     _, losses= sess.run([train_step,loss], 
                                                         feed_dict={
-                                                                    left: x1,
-                                                                    right: x2,
-                                                                    y_: y_true})
+                                                                    siam.x1: x1,
+                                                                    siam.x2: x2,
+                                                                    siam.y_true: y_true})
                     batch_loss_list.append(losses)
                     if step_2 % 100 == 0:
                         mean_loss = np.mean(batch_loss_list)

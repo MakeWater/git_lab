@@ -16,13 +16,13 @@ class siamese():
             with tf.name_scope('input_x2'):
                 self.x2 = tf.placeholder(tf.float32,[None,784])
             with tf.name_scope('y_input'):
-                self.y_true = tf.placeholder(tf.float32,[None])
+                self.y_true = tf.placeholder(tf.float32,[None,1])
             # with tf.name_scope('dropout'):
                 # self.dropout = tf.placeholder(tf.float32)
 
         with tf.variable_scope('siamese') as scope:
             self.output1 = self.deepnn(self.x1) # shape:(1000,10) or (1,10)
-            # scope.reuse_variables()
+            scope.reuse_variables()
             self.output2 = self.deepnn(self.x2)
             with tf.name_scope('similarity'):
                 self.similarity = self.predict_similarity(self.output1,self.output2)
@@ -31,30 +31,28 @@ class siamese():
             self.loss = self.contro_loss(self.similarity,self.y_true)
             # tf.summary.scalar('loss',self.loss)
 
-    def contro_loss(self,similarity_by_network,pairs_label):
+    def contro_loss(self,predicted_similarity,pairs_label):
 
         '''
-        总结下来对比损失的特点：首先看标签，然后标签为1是正对，负对部分损失为0，最小化总损失就是最小化类内损失(within_loss)部分，
-        让s逼近margin的过程，是个增大的过程；标签为0是负对，正对部分损失为0，最小化总损失就是最小化between_loss，而且此时between_loss就是s，
-        所以这个过程也是最小化s的过程，也就使不相似的对更不相似了.
-        最小化类内损失的是一个增大s的过程，最小化类间损失的是一个减少s的过程。
+        s,predicted_similarity: 网络预测的相似度
+        pairs_label:对标签，实际作用是区分类内部分和类间部分分别计算损失，y_true 相当于类内部分的损失，1-y_true 相当于类间部分或者说负对部分的损失。
         '''
         
-        s = similarity_by_network
-        # one = tf.constant(1.0)
-        margin = 1.0
-        y_true = pairs_label
+        s = predicted_similarity
+        margin = 0.8
+        within_part = pairs_label
 
         # 类内损失：
         # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
-        diff_part = margin - s 
+        differ_loss = tf.square(tf.maximum(margin - s,0)) 
         #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
-        within_loss = tf.multiply(y_true,diff_part)
+        within_loss = tf.multiply(within_part,differ_loss)
         # 类间损失：
         #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
-        between_loss = tf.multiply(1.0-y_true,s) 
+        neg_pairs_part = 1.0 - within_part
+        between_loss = tf.multiply(neg_pairs_part,s) 
 
-        # 总体损失（要最小化）：
+        # 总体损失 = 正对损失+负对损失
         loss = within_loss+between_loss
         return loss
 
@@ -113,9 +111,11 @@ class siamese():
             self.variable_summaries(w_fc2)
             b_fc2 = self.bias_variable([10])
             self.variable_summaries(b_fc2)
-            embedding = tf.matmul(h_fc1,w_fc2)+b_fc2
-            tf.summary.histogram('embedding',embedding)
-            # embedding = tf.nn.softmax(embedding,dim=1)
+            h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
+            # tf.summary.histogram('embedding',embedding)
+
+        with tf.name_scope('embedding_normalize'):
+            embedding = tf.nn.l2_normalize(h_fc2,axis=1)
             # tf.reshape(embedding,[1000,10])
         return embedding
 
@@ -127,15 +127,10 @@ class siamese():
         # A, B分别是两个样本经过网络传播之后的提取后的特征/embedding
         # 求两个向量的余弦夹角：A*B/|A|*|B|
         # 求每对样本之间的相似度，即使一个batch_size也是先求各自的再求平均
-        cosi = tf.divide(
-                        tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
-                        tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
-                                    tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
+        cosi = tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True)
         cosi = (cosi+1.0)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
         # cosi batch_size shape：（batch_size，1）
         return cosi
-
-
 
     def variable_summaries(self,var):
         '''Attach a lot of summaries to a Tensor (for Tensorboard visualization).'''
