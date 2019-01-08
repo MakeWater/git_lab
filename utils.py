@@ -47,7 +47,7 @@ def contro_loss(embedding1,embedding2,pairs_label):
     #                 tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
     #                             tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
 
-    cosi = tf.linalg.l2_normalized(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),axis=1)
+    cosi = tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True)
     s = (cosi+1.0)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
     # one = tf.constant(1.0)
     margin = 1.0
@@ -57,23 +57,17 @@ def contro_loss(embedding1,embedding2,pairs_label):
     # 类内损失：
     # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
     #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
-    within_loss = tf.multiply(y_true,diff_part) 
+    within_loss = tf.multiply(y_true,diff_part) #正对相似度要向1靠近以减少损失，从而增大相似度。
 
     # 类间损失：
     #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
     between_part = margin - y_true
-    between_loss = tf.multiply(1.0-y_true,s) 
+    between_loss = tf.multiply(between_part,s) # 负对部分的相似度要小
 
     # 总体损失（要最小化）：
     loss = within_loss+between_loss
     return loss
 
-def contrastive_loss(model1, model2, y, margin):
-    with tf.name_scope("contrastive-loss"):
-        distance = tf.sqrt(tf.reduce_sum(tf.pow(model1 - model2, 2), 1, keep_dims=True))
-        similarity = y * tf.square(distance)                                           # keep the similar label (1) close to each other
-        dissimilarity = (1 - y) * tf.square(tf.maximum((margin - distance), 0))        # give penalty to dissimilar label if the distance is bigger than margin
-        return tf.reduce_mean(dissimilarity + similarity) / 2
 
 def predict_similarity(embedding1,embedding2):
     '''
@@ -87,12 +81,15 @@ def predict_similarity(embedding1,embedding2):
     #                 tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),
     #                 tf.multiply(tf.sqrt(tf.reduce_sum(tf.square(embedding1),axis=1,keep_dims=True)),
     #                             tf.sqrt(tf.reduce_sum(tf.square(embedding2),axis=1,keep_dims=True))))
-    cosi = tf.linalg.l2_normalized(tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True),axis=1)
+    cosi = tf.reduce_sum(tf.multiply(embedding1,embedding2),axis=1,keep_dims=True)
     cosi = (cosi+1.0)/2.0 # 平移伸缩变换到[0,1]区间内,谱聚类算法要求的亲和矩阵中不能产生负值。
     # cosi batch_size 2Dshape：（batch_size，1）
     return cosi
 
 def deepnn(x):
+    '''
+    Return: normalized embedding
+    '''
 
     # input reshape to [batch_size,28,28,channel]
     with tf.name_scope('reshape'):
@@ -138,9 +135,9 @@ def deepnn(x):
         # embedding in shape: [batch_size,10]
         w_fc2 = weight_variable([1024,10])
         b_fc2 = bias_variable([10])
-        embedding = tf.matmul(h_fc1,w_fc2)+b_fc2
-        tf.summary.histogram('embedding',embedding)
-        # embedding = tf.nn.softmax(embedding,dim=1)
+        h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
+        # tf.summary.histogram('embedding',embedding)
+        embedding = tf.nn.l2_normalize(h_fc2,axis=1)
         # tf.reshape(embedding,[1000,10])
     return embedding
 
@@ -196,6 +193,14 @@ def mnist_model(input, reuse=tf.AUTO_REUSE):
         #     net = tf.contrib.layers.fully_connected(net,10,weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
         #         activation_fn=None, scope=scope,reuse=)
     return net
+
+
+def contrastive_loss(model1, model2, y, margin):
+    with tf.name_scope("contrastive-loss"):
+        distance = tf.sqrt(tf.reduce_sum(tf.pow(model1 - model2, 2), 1, keep_dims=True))
+        similarity = y * tf.square(distance)                                           # keep the similar label (1) close to each other
+        dissimilarity = (1 - y) * tf.square(tf.maximum((margin - distance), 0))        # give penalty to dissimilar label if the distance is bigger than margin
+        return tf.reduce_mean(dissimilarity + similarity) / 2
 
 # def deepnn2(x):
 

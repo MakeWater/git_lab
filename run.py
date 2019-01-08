@@ -51,7 +51,7 @@ loss = contro_loss(left_output,right_output,y_)
 global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
 with tf.name_scope('learning_rate'):
     learning_rate_0 = tf.Variable(0.1,name='initial_lr')
-    learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,800,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
+    learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,1000,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
     # tf.summary.scalar('learning_rate',learning_rate)
 
 # with tf.name_scope('loss'):
@@ -76,7 +76,7 @@ for game_epoch in range(total_game_epoch):
 
         # np.save('pairs.npy',pairs)
         # np.save('pairs_label.npy',pairs_label)
-        for batch_size in [128]:
+        for batch_size in [64]:
             for epoch in range(epoch_train):
                 # there should be shuffle each epoch.
                 shuffle = np.random.permutation(pairs.shape[0])
