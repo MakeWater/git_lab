@@ -47,20 +47,21 @@ siam = siamese()
 # loss = tf.losses.cosine_distance(simi,y_,axis=0)
 # loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
-
-global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
-with tf.name_scope('learning_rate'):
-    learning_rate_0 = tf.Variable(0.1,name='initial_lr')
-    learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,1000,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
-    # tf.summary.scalar('learning_rate',learning_rate)
-
-with tf.name_scope('loss'):
-    loss = siam.loss
-    # tf.summary.scalar('loss',loss)
-
-# train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
-train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
 for batch_size in [2,4,8,16,32]:
+    global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
+    with tf.name_scope('learning_rate'):
+        learning_rate_0 = tf.Variable(0.1,name='initial_lr')
+        learning_rate_decay_steps = 99000/batch_size
+        learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,learning_rate_decay_steps,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
+        # tf.summary.scalar('learning_rate',learning_rate)
+
+    with tf.name_scope('loss'):
+        loss = siam.loss
+        # tf.summary.scalar('loss',loss)
+
+    # train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
+    train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
+
     for game_epoch in range(total_game_epoch):
         if game_epoch == 0:
             sess.run(tf.global_variables_initializer())
