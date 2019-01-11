@@ -34,8 +34,8 @@ class siamese():
     def contro_loss(self,predicted_similarity,pairs_label):
 
         '''
-        s,predicted_similarity: 网络预测的相似度
-        pairs_label:对标签，实际作用是区分类内部分和类间部分分别计算损失，y_true 相当于类内部分的损失，1-y_true 相当于类间部分或者说负对部分的损失。
+        s,predicted_similarity: 网络预测的相似度取值分散在0-1.0之间
+        pairs_label:对标签，实际作用是区分类内部分和类间部分分别计算损失，y_true 相当于类内（正对）部分的损失，1-y_true 相当于类间（负对）部分或者说负对部分的损失。
         '''
         
         s = predicted_similarity
@@ -44,7 +44,7 @@ class siamese():
 
         # 类内损失：
         # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
-        differ_loss = tf.square(margin - s)
+        differ_loss = margin - s 
         #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
         within_loss = tf.multiply(within_part,differ_loss)
         # 类间损失：
