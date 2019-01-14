@@ -155,17 +155,17 @@ class siamese():
 
         with tf.name_scope('fc1'):
             # W2 = (W1-F+2P)/S + 1
-            w_fc1 = self.weight_variable([7*7*64,8196])
+            w_fc1 = self.weight_variable([7*7*64,1024])
             self.variable_summaries(w_fc1)
-            b_fc1 = self.bias_variable([8196])
+            b_fc1 = self.bias_variable([1024])
             self.variable_summaries(b_fc1)
             h_pool2_flat = tf.reshape(h_pool2,[-1,7*7*64])
             h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat,w_fc1) + b_fc1)
             tf.summary.histogram('activation3',h_fc1)
 
         with tf.name_scope('fc_x1'):
-            w_fc_x1 = self.weight_variable([8196,1024])
-            b_fc_x1 = self.bias_variable([1024])
+            w_fc_x1 = self.weight_variable([1024,512])
+            b_fc_x1 = self.bias_variable([512])
             h_fc_x1= tf.nn.relu(tf.matmul(h_fc1,w_fc_x1) + b_fc_x1)
 
         # with tf.name_scope('dropout'):
@@ -173,7 +173,7 @@ class siamese():
 
         with tf.name_scope('fc2'):
             # embedding in shape: [batch_size,10]
-            w_fc2 = self.weight_variable([1024,10])
+            w_fc2 = self.weight_variable([512,10])
             self.variable_summaries(w_fc2)
             b_fc2 = self.bias_variable([10])
             self.variable_summaries(b_fc2)
@@ -197,6 +197,20 @@ class siamese():
         # cosi batch_size shape：（batch_size，1）
         return cosi
 
+    def weight_variable(self,shape):
+        initial = tf.truncated_normal(shape,stddev=0.1)
+        return tf.Variable(initial)
+
+    def bias_variable(self,shape):
+        initial = tf.constant(0.1,shape=shape)
+        return tf.Variable(initial)
+
+    def conv2d(self,x,w):
+        return tf.nn.conv2d(x,w,strides=[1,1,1,1],padding='SAME')
+
+    def max_pool_2x2(self,x):
+        return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1], padding='SAME')
+
     def variable_summaries(self,var):
         '''Attach a lot of summaries to a Tensor (for Tensorboard visualization).'''
         with tf.name_scope('summaries'):
@@ -211,17 +225,3 @@ class siamese():
             tf.summary.scalar('min',tf.reduce_min(var))
             # record the distribution of var in histogram
             tf.summary.histogram('histogram',var)
-
-    def weight_variable(self,shape):
-        initial = tf.truncated_normal(shape,stddev=0.1)
-        return tf.Variable(initial)
-
-    def bias_variable(self,shape):
-        initial = tf.constant(0.1,shape=shape)
-        return tf.Variable(initial)
-
-    def conv2d(self,x,w):
-        return tf.nn.conv2d(x,w,strides=[1,1,1,1],padding='SAME')
-
-    def max_pool_2x2(self,x):
-        return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1], padding='SAME')
