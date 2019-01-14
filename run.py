@@ -47,7 +47,7 @@ siam = siamese()
 # loss = tf.losses.cosine_distance(simi,y_,axis=0)
 # loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
-for batch_size in [128,512]:
+for batch_size in [4,16,32,64,128,512]:
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
         learning_rate_0 = tf.Variable(0.1,name='initial_lr')

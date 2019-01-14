@@ -44,7 +44,7 @@ class siamese():
 
         # 类内损失：
         # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
-        differ_loss = 0.6*(margin - s)
+        differ_loss = margin - s
         #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
         within_loss = tf.multiply(within_part,differ_loss)
         # 类间损失：
@@ -53,7 +53,7 @@ class siamese():
         between_loss = tf.multiply(neg_pairs_part,s) 
 
         # 总体损失 = 正对损失+负对损失
-        loss = 0.5*(within_loss+between_loss)
+        loss = 0.5*(0.6*within_loss+between_loss)
         return loss
 
 
@@ -163,21 +163,21 @@ class siamese():
             h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat,w_fc1) + b_fc1)
             tf.summary.histogram('activation3',h_fc1)
 
-        with tf.name_scope('fc_x1'):
-            w_fc_x1 = self.weight_variable([1024,512])
-            b_fc_x1 = self.bias_variable([512])
-            h_fc_x1= tf.nn.relu(tf.matmul(h_fc1,w_fc_x1) + b_fc_x1)
+        # with tf.name_scope('fc_x1'):
+        #     w_fc_x1 = self.weight_variable([1024,512])
+        #     b_fc_x1 = self.bias_variable([512])
+        #     h_fc_x1= tf.nn.relu(tf.matmul(h_fc1,w_fc_x1) + b_fc_x1)
 
         # with tf.name_scope('dropout'):
             # h_fc1_drop = tf.nn.dropout(h_fc1,self.dropout)
 
         with tf.name_scope('fc2'):
             # embedding in shape: [batch_size,10]
-            w_fc2 = self.weight_variable([512,10])
+            w_fc2 = self.weight_variable([1024,10])
             self.variable_summaries(w_fc2)
             b_fc2 = self.bias_variable([10])
             self.variable_summaries(b_fc2)
-            h_fc2 = tf.matmul(h_fc_x1,w_fc2)+b_fc2
+            h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
             # tf.summary.histogram('embedding',embedding)
 
         with tf.name_scope('embedding_normalize'):
