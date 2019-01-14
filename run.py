@@ -80,6 +80,7 @@ for batch_size in [128,512]:
 
             for epoch in range(epoch_train):
                 # there should be shuffle each epoch.
+                sess.run([learning_rate_0.initializer,global_step.initializer])
                 shuffle = np.random.permutation(pairs.shape[0])
                 pairs = pairs[shuffle]
                 pairs_label = pairs_label[shuffle]
@@ -99,7 +100,7 @@ for batch_size in [128,512]:
                                                                         siam.x2: x2,
                                                                         siam.y_true: y_true})
                     batch_loss_list.append(np.array(losses))
-                    if steps%100==1:
+                    if steps%100==0:
 
                         mean_loss = np.mean(batch_loss_list)
                         # train_writer.add_summary(summary,steps)
