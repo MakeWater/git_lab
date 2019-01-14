@@ -21,9 +21,9 @@ class siamese():
                 # self.dropout = tf.placeholder(tf.float32)
 
         with tf.variable_scope('siamese') as scope:
-            self.output1 = self.deepnn(self.x1) # shape:(1000,10) or (1,10)
+            self.output1 = self.mnist_model_2(self.x1) # shape:(1000,10) or (1,10)
             scope.reuse_variables()
-            self.output2 = self.deepnn(self.x2)
+            self.output2 = self.mnist_model_2(self.x2)
             with tf.name_scope('similarity'):
                 self.similarity = self.predict_similarity(self.output1,self.output2)
         
@@ -44,7 +44,7 @@ class siamese():
 
         # 类内损失：
         # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
-        differ_loss = margin - s 
+        differ_loss = tf.square(margin - s) 
         #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
         within_loss = tf.multiply(within_part,differ_loss)
         # 类间损失：
@@ -53,7 +53,7 @@ class siamese():
         between_loss = tf.multiply(neg_pairs_part,s) 
 
         # 总体损失 = 正对损失+负对损失
-        loss = within_loss+between_loss
+        loss = 0.5*(within_loss+between_loss)
         return loss
 
 
