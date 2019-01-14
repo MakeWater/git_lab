@@ -44,7 +44,7 @@ class siamese():
 
         # 类内损失：
         # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
-        differ_loss = tf.square(margin - s) 
+        differ_loss = 0.6*(margin - s)
         #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
         within_loss = tf.multiply(within_part,differ_loss)
         # 类间损失：
