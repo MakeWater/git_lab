@@ -146,7 +146,8 @@ for batch_size in [64,128,512]:
                         W_test[i][j] = sess.run(siam.similarity,
                                 feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
                                            siam.x2:np.expand_dims(test_100[j], axis=0)})
-            np.save('W_test_batch_size{}_Master.npy'.format(batch_size),W_test)
+                        
+            np.save('W_test_batch_size{}.npy'.format(batch_size),W_test)
             print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
 
         '''
