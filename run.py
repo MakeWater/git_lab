@@ -33,6 +33,8 @@ unlabel_data = mnist_data[:1000]
 
 # test_100_data = np.load('test_100_data.npy')
 test_100 = np.load('test_100.npy')
+pairs = np.load('pairs.npy').astype(np.float32)
+pairs_label = np.load('pairs_label.npy').astype(np.float32)
 sess = tf.InteractiveSession()
 siam = siamese()
 
@@ -51,7 +53,7 @@ for batch_size in [64,128,512]:
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
         learning_rate_0 = tf.Variable(0.1,name='initial_lr')
-        learning_rate_decay_steps = 680000/batch_size
+        learning_rate_decay_steps = len(pairs)/batch_size
         learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,learning_rate_decay_steps,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
         # tf.summary.scalar('learning_rate',learning_rate)
 
@@ -67,8 +69,7 @@ for batch_size in [64,128,512]:
             sess.run(tf.global_variables_initializer())
             # merged = tf.summary.merge_all()
             # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
-            pairs = np.load('pairs.npy').astype(np.float32)
-            pairs_label = np.load('pairs_label.npy').astype(np.float32)
+
             # pairs = pairs[:1000]
             # pairs_label = pairs_label[:1000]
             # NMI_score = NMI(label_pred,label)
@@ -147,7 +148,7 @@ for batch_size in [64,128,512]:
                                 feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
                                            siam.x2:np.expand_dims(test_100[j], axis=0)})
                         
-            np.save('W_test_batch_size{}.npy'.format(batch_size),W_test)
+            np.save('W_test_batch_size{}_Master.npy'.format(batch_size),W_test)
             print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
 
         '''
