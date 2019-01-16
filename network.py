@@ -53,7 +53,7 @@ class siamese():
         between_loss = tf.multiply(neg_pairs_part,s) 
 
         # 总体损失 = 正对损失+负对损失
-        loss = 0.5*(0.3*within_loss+0.7*between_loss)
+        loss = 0.5*(within_loss+between_loss)
         return loss
 
 

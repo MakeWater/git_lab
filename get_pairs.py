@@ -120,8 +120,8 @@ def creat_pairs(data,label):
         for pair in single_pairs:
             pos_pairs.append(pair)
     neg_pairs = []
-    neg_num = np.arange(len(pos_pairs))
-    for _ in neg_num:
+    neg_num = len(pos_pairs)
+    for _ in range(neg_num):
         c_1 = random.choice(np.arange(cluster_number)) # cluster 1
         inc = random.randrange(1,cluster_number)
         c_2 = (c_1+inc) % cluster_number # cluster 2
