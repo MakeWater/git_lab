@@ -8,6 +8,7 @@ import os
 import math
 import time
 import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np 
 from sklearn import cluster
 
@@ -15,10 +16,12 @@ from get_pairs import get_pairs_by_None,get_pairs_by_siamese
 from network import siamese
 from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss,contrastive_loss,mnist_model
 
+
+mnist = input_data.read_data_sets('MNIST_data',one_hot=False)
 # 超参数：
 params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 2
-epoch_train = 20
+epoch_train = 1
 epoch_val = 10
 # batch_size = 128
 
@@ -66,38 +69,41 @@ for batch_size in [64,128,512]:
         if game_epoch == 0:
             sess.run(tf.global_variables_initializer())
             # merged = tf.summary.merge_all()
+
             # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
-            pairs = np.load('pairs.npy').astype(np.float32)
-            pairs_label = np.load('pairs_label.npy').astype(np.float32)
+            # pairs = np.load('pairs.npy').astype(np.float32)
+            # pairs_label = np.load('pairs_label.npy').astype(np.float32)
+
             # pairs = pairs[:1000]
             # pairs_label = pairs_label[:1000]
             # NMI_score = NMI(label_pred,label)
             # print('the mean NMI score is:',NMI_score)
-            print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
+            # print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
 
             # np.save('pairs.npy',pairs)
             # np.save('pairs_label.npy',pairs_label)
 
             for epoch in range(epoch_train):
                 # there should be shuffle each epoch.
-                sess.run([learning_rate_0.initializer,global_step.initializer])
-                shuffle = np.random.permutation(pairs.shape[0])
-                pairs = pairs[shuffle]
-                pairs_label = pairs_label[shuffle]
+                # sess.run([learning_rate_0.initializer,global_step.initializer])
+                # shuffle = np.random.permutation(pairs.shape[0])
+                # pairs = pairs[shuffle]
+                # pairs_label = pairs_label[shuffle]
                 print('The next epoch is ',epoch)
                 # shuffle the pairs each epoch
-                batch_loss_list = []
-                data_generator = batch_generator(pairs,pairs_label,batch_size)
-                steps = 0
+                # data_generator = batch_generator(pairs,pairs_label,batch_size)
+                # steps = 0
                 # 这个for循环只是用来读取数据的。 每取一个batch的数据就是一个step
-                for ([batch_x1,batch_x2],y_true) in data_generator:# get batch data from data generator
-                    x1 = batch_x1
-                    x2 = batch_x2
-                    y_true = np.expand_dims(y_true,-1)
+                batch_loss_list = []
+                for steps in range(50000):# get batch data from data generator
+                    batch_x1,batch_y1 = mnist.train.next_batch(batch_size)
+                    batch_x2,batch_y2 = mnist.train.next_batch(batch_size)
+                    batch_y = (batch_y1==batch_y2).astype('float')
+                    y_true = np.expand_dims(batch_y,-1)
                     _, losses = sess.run([train_step,loss], 
                                                             feed_dict={
-                                                                        siam.x1: x1,
-                                                                        siam.x2: x2,
+                                                                        siam.x1: batch_x1,
+                                                                        siam.x2: batch_x2,
                                                                         siam.y_true: y_true})
                     batch_loss_list.append(np.array(losses))
                     if steps%100==0:
@@ -107,7 +113,7 @@ for batch_size in [64,128,512]:
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.
                         print('the game_epoch is %d,epoch is %d,step is %d, batch_size is %d, mean loss is %.3f,current learning_rate is %.8f' % 
                             (game_epoch, epoch, steps, batch_size, mean_loss,sess.run(learning_rate)))
-                    steps += 1
+                    # steps += 1
             # train_writer.close()
 
 
@@ -116,27 +122,29 @@ for batch_size in [64,128,512]:
         elif game_epoch > 0:
             # 1、准备数据：W，pairs，pairs label, 修改params
             # compute the affinity matrix by siamese:
-            n = len(unlabel_data)
-            W = np.zeros((n,n))
-            start = time.clock()
-            for i in range(n):
-                for j in range(i,n):
-                    if i == j:
-                        W[i][j] = 0.5
-                    else:
-                        # approch 2:(solve the shape problem by array = np.expand_dims(array,axis=0)
-                        W[i][j] = sess.run(siam.similarity,
-                            feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
-                                       siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
-                        if j%100==1:
-                            print('the similarity between {} and {} is {}'.format(i,j,W[i][j]))
-            elapsed = (time.clock() - start)
-            print('Time used to compute affinity :',elapsed)
 
-            np.save('W_{}_0.npy'.format(game_epoch),W) # 转置前的W 
-            # 转置成对称阵
-            W = W + W.transpose()
-            np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
+            # n = len(unlabel_data)
+            # W = np.zeros((n,n))
+            # start = time.clock()
+            # for i in range(n):
+            #     for j in range(i,n):
+            #         if i == j:
+            #             W[i][j] = 0.5
+            #         else:
+            #             # approch 2:(solve the shape problem by array = np.expand_dims(array,axis=0)
+            #             W[i][j] = sess.run(siam.similarity,
+            #                 feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
+            #                            siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
+            #             if j%100==1:
+            #                 print('the similarity between {} and {} is {}'.format(i,j,W[i][j]))
+            # elapsed = (time.clock() - start)
+            # print('Time used to compute affinity :',elapsed)
+
+            # np.save('W_{}_0.npy'.format(game_epoch),W) # 转置前的W 
+            # # 转置成对称阵
+            # W = W + W.transpose()
+            # np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
+
             W_test = np.zeros((100,100),dtype=np.float64)
             for i in range(100):
                 for j in range(100):
