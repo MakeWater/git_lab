@@ -21,15 +21,17 @@ class siamese():
                 # self.dropout = tf.placeholder(tf.float32)
 
         with tf.variable_scope('siamese') as scope:
-            self.output1 = self.mnist_model_2(self.x1) # shape:(1000,10) or (1,10)
+            self.output1 = self.deepnn(self.x1) # shape:(1000,10) or (1,10)
             scope.reuse_variables()
-            self.output2 = self.mnist_model_2(self.x2)
+            self.output2 = self.deepnn(self.x2)
             with tf.name_scope('similarity'):
                 self.similarity = self.predict_similarity(self.output1,self.output2)
+                self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
         
         with tf.name_scope('loss'):
-            self.loss = self.contro_loss(self.similarity,self.y_true)
-            # tf.summary.scalar('loss',self.loss)
+            # self.loss = self.contro_loss(self.similarity,self.y_true)
+            self.loss = self.contrastive_loss(self.distance,self.y_true,margin= 0.5)
+
 
     def contro_loss(self,predicted_similarity,pairs_label):
 
@@ -56,6 +58,11 @@ class siamese():
         loss = 0.5*(within_loss+between_loss)
         return loss
 
+    def contrastive_loss(self,distance, y, margin):
+        with tf.name_scope("contrastive-loss"):
+            similarity = y * tf.square(distance)                                           # keep the similar label (1) close to each other
+            dissimilarity = (1 - y) * tf.square(tf.maximum((margin - distance), 0))        # give penalty to dissimilar label if the distance is bigger than margin
+            return 0.5*tf.reduce_mean(dissimilarity + similarity)
 
     def deepnn(self,x):
 
@@ -112,11 +119,12 @@ class siamese():
             b_fc2 = self.bias_variable([10])
             self.variable_summaries(b_fc2)
             h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
-            # tf.summary.histogram('embedding',embedding)
+
+        # embedding = h_fc2
 
         with tf.name_scope('embedding_normalize'):
             embedding = tf.nn.l2_normalize(h_fc2,axis=1)
-            # tf.reshape(embedding,[1000,10])
+
         return embedding
 
     def mnist_model_2(self,x):

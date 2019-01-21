@@ -49,11 +49,12 @@ siam = siamese()
 # loss = tf.losses.cosine_distance(simi,y_,axis=0)
 # loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
+
 for batch_size in [64,128,512]:
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
         learning_rate_0 = tf.Variable(0.1,name='initial_lr')
-        learning_rate_decay_steps = len(pairs)/batch_size
+        learning_rate_decay_steps = 0.5*len(pairs)/batch_size
         learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,learning_rate_decay_steps,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
         # tf.summary.scalar('learning_rate',learning_rate)
 
@@ -106,8 +107,8 @@ for batch_size in [64,128,512]:
                         mean_loss = np.mean(batch_loss_list)
                         # train_writer.add_summary(summary,steps)
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.
-                        print('the game_epoch is %d,epoch is %d,step is %d, batch_size is %d, mean loss is %.3f,current learning_rate is %.8f' % 
-                            (game_epoch, epoch, steps, batch_size, mean_loss,sess.run(learning_rate)))
+                        print('the game_epoch is %d,epoch is %d,step is %d, batch_size is %d, mean loss is %.3f,current learning_rate is %.8f, branch is %s' % 
+                            (game_epoch, epoch, steps, batch_size, mean_loss,sess.run(learning_rate),'Master'))
                     steps += 1
             # train_writer.close()
 
@@ -117,37 +118,40 @@ for batch_size in [64,128,512]:
         elif game_epoch > 0:
             # 1、准备数据：W，pairs，pairs label, 修改params
             # compute the affinity matrix by siamese:
-            n = len(unlabel_data)
-            W = np.zeros((n,n))
-            start = time.clock()
-            for i in range(n):
-                for j in range(i,n):
-                    if i == j:
-                        W[i][j] = 0.5
-                    else:
-                        # approch 2:(solve the shape problem by array = np.expand_dims(array,axis=0)
-                        W[i][j] = sess.run(siam.similarity,
-                            feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
-                                       siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
-                        if j%100==1:
-                            print('the similarity between {} and {} is {}'.format(i,j,W[i][j]))
-            elapsed = (time.clock() - start)
-            print('Time used to compute affinity :',elapsed)
 
-            np.save('W_{}_0.npy'.format(game_epoch),W) # 转置前的W 
-            # 转置成对称阵
-            W = W + W.transpose()
-            np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
+            # n = len(unlabel_data)
+            # W = np.zeros((n,n))
+            # start = time.clock()
+            # for i in range(n):
+            #     for j in range(i,n):
+            #         if i == j:
+            #             W[i][j] = 0.5
+            #         else:
+            #             # approch 2:(solve the shape problem by array = np.expand_dims(array,axis=0)
+            #             W[i][j] = sess.run(siam.similarity,
+            #                 feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
+            #                            siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
+            #             if j%100==1:
+            #                 print('the similarity between {} and {} is {}'.format(i,j,W[i][j]))
+            # elapsed = (time.clock() - start)
+            # print('Time used to compute affinity :',elapsed)
+
+            # np.save('W_{}_0.npy'.format(game_epoch),W) # 转置前的W 
+            # # 转置成对称阵
+            # W = W + W.transpose()
+            # np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
+
             W_test = np.zeros((100,100),dtype=np.float64)
             for i in range(100):
                 for j in range(100):
                     if i==j:
                         W_test[i][j] = 1
                     else:
-                        W_test[i][j] = sess.run(siam.similarity,
+                        W_test[i][j] = sess.run(siam.distance,
                                 feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
                                            siam.x2:np.expand_dims(test_100[j], axis=0)})
-                        
+            max_distance = np.max(W_test)
+            W_test = max_distance - W_test
             np.save('W_test_batch_size{}_Master.npy'.format(batch_size),W_test)
             print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
 
