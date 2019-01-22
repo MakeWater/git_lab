@@ -18,9 +18,9 @@ class siamese():
                 # self.dropout = tf.placeholder(tf.float32)
 
         with tf.variable_scope('siamese') as scope:
-            self.output1 = self.deepnn(self.x1) # shape:(1000,10) or (1,10)
+            self.output1 = self.network(self.x1) # shape:(1000,10) or (1,10)
             scope.reuse_variables()
-            self.output2 = self.deepnn(self.x2)
+            self.output2 = self.network(self.x2)
             with tf.name_scope('similarity'):
                 self.similarity = self.predict_similarity(self.output1,self.output2)
                 # self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
@@ -196,6 +196,7 @@ class siamese():
         fc2 = self.fc_layer(ac1, 1024, "fc2")
         ac2 = tf.nn.relu(fc2)
         fc3 = self.fc_layer(ac2, 2, "fc3")
+        fc3 = tf.nn.l2_normalize(fc3,axis=1)
         return fc3
 
     def fc_layer(self, bottom, n_weight, name):
