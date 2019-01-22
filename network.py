@@ -9,14 +9,10 @@ class siamese():
                                    measure similarity between samples as a measure function
     '''
     def __init__(self):
-
-        with tf.name_scope('input'):
-            with tf.name_scope('input_x1'):
-                self.x1 = tf.placeholder(tf.float32,[None,784])
-            with tf.name_scope('input_x2'):
-                self.x2 = tf.placeholder(tf.float32,[None,784])
-            with tf.name_scope('y_input'):
-                self.y_true = tf.placeholder(tf.float32,[None])
+        # input
+        self.x1 = tf.placeholder(tf.float32,[None,784])
+        self.x2 = tf.placeholder(tf.float32,[None,784])
+        self.y_true = tf.placeholder(tf.float32,[None])
             # with tf.name_scope('dropout'):
                 # self.dropout = tf.placeholder(tf.float32)
 
@@ -26,13 +22,15 @@ class siamese():
             self.output2 = self.deepnn(self.x2)
             with tf.name_scope('similarity'):
                 self.similarity = self.predict_similarity(self.output1,self.output2)
+                # self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
         
         with tf.name_scope('loss'):
             self.loss = self.contro_loss(self.similarity,self.y_true)
-            # tf.summary.scalar('loss',self.loss)
+            # self.loss = self.contrastive_loss(self.distance,self.y_true,margin= 0.5)
+            # self.loss = self.loss_with_spring()
+
 
     def contro_loss(self,predicted_similarity,pairs_label):
-
         '''
         s,predicted_similarity: 网络预测的相似度取值分散在0-1.0之间
         pairs_label:对标签，实际作用是区分类内部分和类间部分分别计算损失，y_true 相当于类内（正对）部分的损失，1-y_true 相当于类间（负对）部分或者说负对部分的损失。
@@ -56,6 +54,11 @@ class siamese():
         loss = 0.5*(within_loss+between_loss)
         return loss
 
+    def contrastive_loss(self,distance, y, margin):
+        with tf.name_scope("contrastive-loss"):
+            similarity = y * tf.square(distance)                                           # keep the similar label (1) close to each other
+            dissimilarity = (1 - y) * tf.square(tf.maximum((margin - distance), 0))        # give penalty to dissimilar label if the distance is bigger than margin
+            return 0.5*tf.reduce_mean(dissimilarity + similarity)
 
     def deepnn(self,x):
 
@@ -112,11 +115,12 @@ class siamese():
             b_fc2 = self.bias_variable([10])
             self.variable_summaries(b_fc2)
             h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
-            # tf.summary.histogram('embedding',embedding)
+
+        # embedding = h_fc2
 
         with tf.name_scope('embedding_normalize'):
             embedding = tf.nn.l2_normalize(h_fc2,axis=1)
-            # tf.reshape(embedding,[1000,10])
+
         return embedding
 
     def mnist_model_2(self,x):
@@ -184,6 +188,40 @@ class siamese():
             embedding = tf.nn.l2_normalize(h_fc2,axis=1)
             # tf.reshape(embedding,[1000,10])
         return embedding
+
+    def network(self, x):
+        fc1 = self.fc_layer(x, 1024, "fc1")
+        ac1 = tf.nn.relu(fc1)
+        fc2 = self.fc_layer(ac1, 1024, "fc2")
+        ac2 = tf.nn.relu(fc2)
+        fc3 = self.fc_layer(ac2, 2, "fc3")
+        return fc3
+
+    def fc_layer(self, bottom, n_weight, name):
+        assert len(bottom.get_shape()) == 2
+        n_prev_weight = bottom.get_shape()[1]
+        initer = tf.truncated_normal_initializer(stddev=0.01)
+        W = tf.get_variable(name+'W', dtype=tf.float32, shape=[n_prev_weight, n_weight], initializer=initer)
+        b = tf.get_variable(name+'b', dtype=tf.float32, initializer=tf.constant(0.01, shape=[n_weight], dtype=tf.float32))
+        fc = tf.nn.bias_add(tf.matmul(bottom, W), b)
+        return fc
+
+    def loss_with_spring(self):
+        margin = 5.0
+        labels_t = self.y_true
+        labels_f = tf.subtract(1.0, self.y_true, name="1-yi")          # labels_ = !labels;
+        eucd2 = tf.pow(tf.subtract(self.output1, self.output2), 2)
+        eucd2 = tf.reduce_sum(eucd2, 1)
+        eucd = tf.sqrt(eucd2+1e-6, name="eucd")
+        C = tf.constant(margin, name="C")
+        # yi*||CNN(p1i)-CNN(p2i)||^2 + (1-yi)*max(0, C-||CNN(p1i)-CNN(p2i)||^2)
+        pos = tf.multiply(labels_t, eucd2, name="yi_x_eucd2")
+        # neg = tf.multiply(labels_f, tf.subtract(0.0,eucd2), name="yi_x_eucd2")
+        # neg = tf.multiply(labels_f, tf.maximum(0.0, tf.subtract(C,eucd2)), name="Nyi_x_C-eucd_xx_2")
+        neg = tf.multiply(labels_f, tf.pow(tf.maximum(tf.subtract(C, eucd), 0), 2), name="Nyi_x_C-eucd_xx_2")
+        losses = tf.add(pos, neg, name="losses")
+        loss = tf.reduce_mean(losses, name="loss")
+        return loss
 
     def predict_similarity(self,embedding1,embedding2):
         '''

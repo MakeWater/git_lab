@@ -29,12 +29,15 @@ if not os.path.exists('log'):
 log_dir = 'log' # 如果log目录不存在于当前目录，则在当前文件夹创建一个“log”目录并赋值给log_dir对象
 
 # unlabel_data, _ = get_data()
-mnist_data = np.load('mnist.npy').astype(np.float32)
-label = np.load('mnist_lab.npy')[:1000] # for NMI computation
-unlabel_data = mnist_data[:1000]
+# mnist_data = np.load('mnist.npy').astype(np.float32)
+mnist = input_data.read_data_sets('MNIST_data',one_hot=False)
+# label = np.load('mnist_lab.npy')[:1000] # for NMI computation
+# unlabel_data = mnist_data[:1000]
 
 # test_100_data = np.load('test_100_data.npy')
 test_100 = np.load('test_100.npy')
+pairs = np.load('pairs.npy').astype(np.float32)
+pairs_label = np.load('pairs_label.npy').astype(np.float32)
 sess = tf.InteractiveSession()
 siam = siamese()
 
@@ -49,15 +52,17 @@ siam = siamese()
 # loss = tf.losses.cosine_distance(simi,y_,axis=0)
 # loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
+
 for batch_size in [64,128,512]:
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
-        learning_rate_0 = tf.Variable(0.1,name='initial_lr')
-        learning_rate_decay_steps = 680000/batch_size
+        learning_rate_0 = tf.Variable(0.01,name='initial_lr')
+        learning_rate_decay_steps = 0.5*len(pairs)/batch_size
         learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,learning_rate_decay_steps,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
 
     # train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
     train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(siam.loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
+    # 初始化全部变量，包括网络、学习率、global_step等
     sess.run(tf.global_variables_initializer())
     for game_epoch in range(total_game_epoch):
         if game_epoch == 0:
@@ -65,8 +70,9 @@ for batch_size in [64,128,512]:
             # merged = tf.summary.merge_all()
 
             # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
-            pairs = np.load('pairs.npy').astype(np.float32)
-            pairs_label = np.load('pairs_label.npy').astype(np.float32)
+
+            # pairs = np.load('pairs.npy').astype(np.float32)
+            # pairs_label = np.load('pairs_label.npy').astype(np.float32)
 
             # pairs = pairs[:1000]
             # pairs_label = pairs_label[:1000]
@@ -80,34 +86,35 @@ for batch_size in [64,128,512]:
             for epoch in range(epoch_train):
                 sess.run([learning_rate_0.initializer,global_step.initializer])
                 # there should be shuffle each epoch.
-                shuffle = np.random.permutation(pairs.shape[0])
-                pairs = pairs[shuffle]
-                pairs_label = pairs_label[shuffle]
+                # sess.run([learning_rate_0.initializer,global_step.initializer])
+                # shuffle = np.random.permutation(pairs.shape[0])
+                # pairs = pairs[shuffle]
+                # pairs_label = pairs_label[shuffle]
                 print('The next epoch is ',epoch)
                 # shuffle the pairs each epoch
-                data_generator = batch_generator(pairs,pairs_label,batch_size)
-                steps = 0
+                # batch_loss_list = []
+                # data_generator = batch_generator(pairs,pairs_label,batch_size)
+                # steps = 0
                 # 这个for循环只是用来读取数据的。 每取一个batch的数据就是一个step
-                batch_loss_list = []
-                for ([batch_x1,batch_x2],y_true) in data_generator:# get batch data from data generator
-                    # batch_x1,batch_y1 = mnist.train.next_batch(batch_size)
-                    # batch_x2,batch_y2 = mnist.train.next_batch(batch_size)
-                    # batch_y = (batch_y1==batch_y2).astype('float')
-                    # y_true = np.expand_dims(batch_y,-1)
+                for steps in range(50000):# get batch data from data generator
+                    x1,y1 = mnist.train.next_batch(batch_size)
+                    x2,y2 = mnist.train.next_batch(batch_size)
+                    y_true = (y1==y2).astype('float')
+                    # y_true = np.expand_dims(y_true,-1)
                     _, losses = sess.run([train_step,siam.loss], 
                                                             feed_dict={
                                                                         siam.x1: batch_x1,
                                                                         siam.x2: batch_x2,
                                                                         siam.y_true: y_true})
-                    batch_loss_list.append(np.array(losses))
-                    if steps%100==0:
+                    # batch_loss_list.append(np.array(losses))
+                    if steps%10==0:
 
-                        mean_loss = np.mean(batch_loss_list)
+                        mean_loss = np.mean(losses)
                         # train_writer.add_summary(summary,steps)
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.
-                        print('the game_epoch is %d,epoch is %d,step is %d, batch_size is %d, mean loss is %.3f,current learning_rate is %.8f' % 
-                            (game_epoch, epoch, steps, batch_size, mean_loss,sess.run(learning_rate)))
-                    steps += 1
+                        print('the game_epoch is %d,epoch is %d,step is %d, batch_size is %d, mean loss is %.3f,current learning_rate is %.8f, branch is %s' % 
+                            (game_epoch, epoch, steps, batch_size, mean_loss,sess.run(learning_rate),'Master'))
+                    # steps += 1
             # train_writer.close()
 
 
@@ -148,8 +155,9 @@ for batch_size in [64,128,512]:
                         W_test[i][j] = sess.run(siam.similarity,
                                 feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
                                            siam.x2:np.expand_dims(test_100[j], axis=0)})
-                        
-            np.save('W_test_batch_size{}.npy'.format(batch_size),W_test)
+            # max_distance = np.max(W_test)
+            # W_test = max_distance - W_test
+            np.save('W_test_batch_size{}_Master.npy'.format(batch_size),W_test)
             print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
 
         '''
