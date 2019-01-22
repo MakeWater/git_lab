@@ -110,9 +110,9 @@ class siamese():
 
         with tf.name_scope('fc2'):
             # embedding in shape: [batch_size,10]
-            w_fc2 = self.weight_variable([1024,10])
+            w_fc2 = self.weight_variable([1024,2])
             self.variable_summaries(w_fc2)
-            b_fc2 = self.bias_variable([10])
+            b_fc2 = self.bias_variable([2])
             self.variable_summaries(b_fc2)
             h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
 

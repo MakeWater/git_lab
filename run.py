@@ -20,7 +20,7 @@ from utils import NMI,batch_generator
 # 超参数：
 params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 2
-epoch_train = 1
+epoch_train = 2
 epoch_val = 10
 # batch_size = 128
 
