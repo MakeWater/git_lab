@@ -114,8 +114,8 @@ for batch_size in [64,128,512]:
                         mean_loss = np.mean(losses)
                         # train_writer.add_summary(summary,steps)
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.
-                        print('the game_epoch is %d,epoch is %d,step is %d, batch_size is %d, mean loss is %.3f,current learning_rate is %.8f, branch is %s' % 
-                            (game_epoch, epoch, steps, batch_size, mean_loss,sess.run(learning_rate),'Master'))
+                        print('the game_epoch is %d,epoch is %d,step is %d, batch_size is %d, mean loss is %.3f,current learning_rate is %.8f' % 
+                            (game_epoch, epoch, steps, batch_size, mean_loss,sess.run(learning_rate)))
                     # steps += 1
             # train_writer.close()
 
