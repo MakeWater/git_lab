@@ -18,9 +18,9 @@ class siamese():
                 # self.dropout = tf.placeholder(tf.float32)
 
         with tf.variable_scope('siamese') as scope:
-            self.output1 = self.network(self.x1) # shape:(1000,10) or (1,10)
+            self.output1 = self.deepnn(self.x1) # shape:(1000,10) or (1,10)
             scope.reuse_variables()
-            self.output2 = self.network(self.x2)
+            self.output2 = self.deepnn(self.x2)
             with tf.name_scope('similarity'):
                 self.similarity = self.predict_similarity(self.output1,self.output2)
                 # self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
@@ -68,16 +68,16 @@ class siamese():
             # transform input type to tensorflow type
             # x = tf.cast(x,tf.float32)
             x_image = tf.reshape(x,[-1,28,28,1])
-            tf.summary.image('input',x_image,10)
+            # tf.summary.image('input',x_image,10)
 
         # layer1: picture width = 28->28
         with tf.name_scope('conv1'):
             w_conv1 = self.weight_variable([5,5,1,32])
-            self.variable_summaries(w_conv1)
+            # self.variable_summaries(w_conv1)
             b_conv1 = self.bias_variable([32])
-            self.variable_summaries(b_conv1)
+            # self.variable_summaries(b_conv1)
             h_conv1 = tf.nn.relu(self.conv2d(x_image,w_conv1) + b_conv1)
-            tf.summary.histogram('activation1',h_conv1)
+            # tf.summary.histogram('activation1',h_conv1)
 
         # pooling layer1 : 28->14
         with tf.name_scope('pooling1'):
@@ -86,11 +86,11 @@ class siamese():
         # convolution layer2 : 14->14
         with tf.name_scope('conv2'):
             w_conv2 = self.weight_variable([5,5,32,64])
-            self.variable_summaries(w_conv2)
+            # self.variable_summaries(w_conv2)
             b_conv2 = self.weight_variable([64])
-            self.variable_summaries(b_conv2)
+            # self.variable_summaries(b_conv2)
             h_conv2 = tf.nn.relu(self.conv2d(h_pooling_1,w_conv2) + b_conv2)
-            tf.summary.histogram('activation2',h_conv2)
+            # tf.summary.histogram('activation2',h_conv2)
 
         # feature width : 14->7
         with tf.name_scope('pooling2'):
@@ -99,12 +99,12 @@ class siamese():
         with tf.name_scope('fc1'):
             # W2 = (W1-F+2P)/S + 1
             w_fc1 = self.weight_variable([7*7*64,1024])
-            self.variable_summaries(w_fc1)
+            # self.variable_summaries(w_fc1)
             b_fc1 = self.bias_variable([1024])
-            self.variable_summaries(b_fc1)
+            # self.variable_summaries(b_fc1)
             h_pool2_flat = tf.reshape(h_pool2,[-1,7*7*64])
             h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat,w_fc1) + b_fc1)
-            tf.summary.histogram('activation3',h_fc1)
+            # tf.summary.histogram('activation3',h_fc1)
 
         # with tf.name_scope('dropout'):
             # h_fc1_drop = tf.nn.dropout(h_fc1,self.dropout)
@@ -112,9 +112,9 @@ class siamese():
         with tf.name_scope('fc2'):
             # embedding in shape: [batch_size,10]
             w_fc2 = self.weight_variable([1024,10])
-            self.variable_summaries(w_fc2)
+            # self.variable_summaries(w_fc2)
             b_fc2 = self.bias_variable([10])
-            self.variable_summaries(b_fc2)
+            # self.variable_summaries(b_fc2)
             h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
 
         # embedding = h_fc2
@@ -130,16 +130,16 @@ class siamese():
             # transform input type to tensorflow type
             # x = tf.cast(x,tf.float32)
             x_image = tf.reshape(x,[-1,28,28,1])
-            tf.summary.image('input',x_image,10)
+            # tf.summary.image('input',x_image,10)
 
         # layer1: picture width = 28->28
         with tf.name_scope('conv1'):
             w_conv1 = self.weight_variable([5,5,1,32])
-            self.variable_summaries(w_conv1)
+            # self.variable_summaries(w_conv1)
             b_conv1 = self.bias_variable([32])
-            self.variable_summaries(b_conv1)
+            # self.variable_summaries(b_conv1)
             h_conv1 = tf.nn.relu(self.conv2d(x_image,w_conv1) + b_conv1)
-            tf.summary.histogram('activation1',h_conv1)
+            # tf.summary.histogram('activation1',h_conv1)
 
         # pooling layer1 : 28->14
         with tf.name_scope('pooling1'):
@@ -148,11 +148,11 @@ class siamese():
         # convolution layer2 : 14->14
         with tf.name_scope('conv2'):
             w_conv2 = self.weight_variable([5,5,32,64])
-            self.variable_summaries(w_conv2)
+            # self.variable_summaries(w_conv2)
             b_conv2 = self.weight_variable([64])
-            self.variable_summaries(b_conv2)
+            # self.variable_summaries(b_conv2)
             h_conv2 = tf.nn.relu(self.conv2d(h_pooling_1,w_conv2) + b_conv2)
-            tf.summary.histogram('activation2',h_conv2)
+            # tf.summary.histogram('activation2',h_conv2)
 
         # feature width : 14->7
         with tf.name_scope('pooling2'):
@@ -161,12 +161,12 @@ class siamese():
         with tf.name_scope('fc1'):
             # W2 = (W1-F+2P)/S + 1
             w_fc1 = self.weight_variable([7*7*64,1024])
-            self.variable_summaries(w_fc1)
+            # self.variable_summaries(w_fc1)
             b_fc1 = self.bias_variable([1024])
-            self.variable_summaries(b_fc1)
+            # self.variable_summaries(b_fc1)
             h_pool2_flat = tf.reshape(h_pool2,[-1,7*7*64])
             h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat,w_fc1) + b_fc1)
-            tf.summary.histogram('activation3',h_fc1)
+            # tf.summary.histogram('activation3',h_fc1)
 
         # with tf.name_scope('fc_x1'):
         #     w_fc_x1 = self.weight_variable([1024,512])
@@ -177,17 +177,16 @@ class siamese():
             # h_fc1_drop = tf.nn.dropout(h_fc1,self.dropout)
 
         with tf.name_scope('fc2'):
-            # embedding in shape: [batch_size,10]
-            w_fc2 = self.weight_variable([1024,10])
-            self.variable_summaries(w_fc2)
-            b_fc2 = self.bias_variable([10])
-            self.variable_summaries(b_fc2)
+            # embedding in shape: [batch_size,4]
+            w_fc2 = self.weight_variable([1024,4])
+            # self.variable_summaries(w_fc2)
+            b_fc2 = self.bias_variable([4])
+            # self.variable_summaries(b_fc2)
             h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
             # tf.summary.histogram('embedding',embedding)
 
         with tf.name_scope('embedding_normalize'):
             embedding = tf.nn.l2_normalize(h_fc2,axis=1)
-            # tf.reshape(embedding,[1000,10])
         return embedding
 
     def network(self, x):
