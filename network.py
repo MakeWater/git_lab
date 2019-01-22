@@ -17,28 +17,28 @@ class siamese():
                 # self.dropout = tf.placeholder(tf.float32)
 
         with tf.variable_scope('siamese') as scope:
-            self.output1 = self.deepnn(self.x1) # shape:(1000,10) or (1,10)
+            self.output1 = self.network(self.x1) # shape:(1000,10) or (1,10)
             scope.reuse_variables()
-            self.output2 = self.deepnn(self.x2)
+            self.output2 = self.network(self.x2)
             with tf.name_scope('similarity'):
                 self.similarity = self.predict_similarity(self.output1,self.output2)
                 # self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
         
         with tf.name_scope('loss'):
-            self.loss = self.contro_loss(self.similarity,self.y_true)
+            self.loss = self.contro_loss()
             # self.loss = self.contrastive_loss(self.distance,self.y_true,margin= 0.5)
             # self.loss = self.loss_with_spring()
 
 
-    def contro_loss(self,predicted_similarity,pairs_label):
+    def contro_loss(self):
         '''
-        s,predicted_similarity: 网络预测的相似度取值分散在0-1.0之间
+        s: 网络预测的相似度取值分散在0-1.0之间
         pairs_label:对标签，实际作用是区分类内部分和类间部分分别计算损失，y_true 相当于类内（正对）部分的损失，1-y_true 相当于类间（负对）部分或者说负对部分的损失。
         '''
         
-        s = predicted_similarity
+        s = self.predict_similarity(self.output1,self.output2)
         margin = 1.0
-        within_part = pairs_label
+        within_part = self.y_true
 
         # 类内损失：
         # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
@@ -197,13 +197,13 @@ class siamese():
         fc3 = self.fc_layer(ac2, 2, "fc3")
         return fc3
 
-    def fc_layer(self, bottom, n_weight, name):
-        assert len(bottom.get_shape()) == 2
-        n_prev_weight = bottom.get_shape()[1]
+    def fc_layer(self, inputs_data, n_weight, name):
+        assert len(inputs_data.get_shape()) == 2
+        n_prev_weight = inputs_data.get_shape()[1]
         initer = tf.truncated_normal_initializer(stddev=0.01)
         W = tf.get_variable(name+'W', dtype=tf.float32, shape=[n_prev_weight, n_weight], initializer=initer)
         b = tf.get_variable(name+'b', dtype=tf.float32, initializer=tf.constant(0.01, shape=[n_weight], dtype=tf.float32))
-        fc = tf.nn.bias_add(tf.matmul(bottom, W), b)
+        fc = tf.nn.bias_add(tf.matmul(inputs_data, W), b)
         return fc
 
     def loss_with_spring(self):

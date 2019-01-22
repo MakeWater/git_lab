@@ -54,6 +54,7 @@ siam = siamese()
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
 
 for batch_size in [64,128,512]:
+    
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
         learning_rate_0 = tf.Variable(0.01,name='initial_lr')
@@ -100,11 +101,10 @@ for batch_size in [64,128,512]:
                     x1,y1 = mnist.train.next_batch(batch_size)
                     x2,y2 = mnist.train.next_batch(batch_size)
                     y_true = (y1==y2).astype('float')
-                    # y_true = np.expand_dims(y_true,-1)
                     _, losses = sess.run([train_step,siam.loss], 
                                                             feed_dict={
-                                                                        siam.x1: batch_x1,
-                                                                        siam.x2: batch_x2,
+                                                                        siam.x1: x1,
+                                                                        siam.x2: x2,
                                                                         siam.y_true: y_true})
                     # batch_loss_list.append(np.array(losses))
                     if steps%10==0:
@@ -152,11 +152,11 @@ for batch_size in [64,128,512]:
                     if i==j:
                         W_test[i][j] = 1
                     else:
-                        W_test[i][j] = sess.run(siam.similarity,
+                        W_test[i][j] = sess.run(siam.distance,
                                 feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
                                            siam.x2:np.expand_dims(test_100[j], axis=0)})
-            # max_distance = np.max(W_test)
-            # W_test = max_distance - W_test
+            max_distance = np.max(W_test)
+            W_test = max_distance - W_test
             np.save('W_test_batch_size{}_Master.npy'.format(batch_size),W_test)
             print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
 
