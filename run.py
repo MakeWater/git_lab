@@ -14,8 +14,7 @@ from sklearn import cluster
 
 from get_pairs import get_pairs_by_None,get_pairs_by_siamese
 from network import siamese
-from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss,contrastive_loss,mnist_model
-
+from utils import NMI,batch_generator
 
 # mnist = input_data.read_data_sets('MNIST_data',one_hot=False)
 # 超参数：
@@ -90,12 +89,12 @@ for batch_size in [64,128,512]:
                 steps = 0
                 # 这个for循环只是用来读取数据的。 每取一个batch的数据就是一个step
                 batch_loss_list = []
-                for ([batch_x1,batch_x2],y_true) in range(50000):# get batch data from data generator
+                for ([batch_x1,batch_x2],y_true) in data_generator:# get batch data from data generator
                     # batch_x1,batch_y1 = mnist.train.next_batch(batch_size)
                     # batch_x2,batch_y2 = mnist.train.next_batch(batch_size)
                     # batch_y = (batch_y1==batch_y2).astype('float')
                     # y_true = np.expand_dims(batch_y,-1)
-                    _, losses = sess.run([train_step,loss], 
+                    _, losses = sess.run([train_step,siam.loss], 
                                                             feed_dict={
                                                                         siam.x1: batch_x1,
                                                                         siam.x2: batch_x2,

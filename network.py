@@ -16,7 +16,7 @@ class siamese():
             with tf.name_scope('input_x2'):
                 self.x2 = tf.placeholder(tf.float32,[None,784])
             with tf.name_scope('y_input'):
-                self.y_true = tf.placeholder(tf.float32,[None,1])
+                self.y_true = tf.placeholder(tf.float32,[None])
             # with tf.name_scope('dropout'):
                 # self.dropout = tf.placeholder(tf.float32)
 
