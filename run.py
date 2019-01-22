@@ -17,7 +17,7 @@ from network import siamese
 from utils import NMI,batch_generator,deepnn,predict_similarity,contro_loss,contrastive_loss,mnist_model
 
 
-mnist = input_data.read_data_sets('MNIST_data',one_hot=False)
+# mnist = input_data.read_data_sets('MNIST_data',one_hot=False)
 # 超参数：
 params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 2
@@ -56,23 +56,18 @@ for batch_size in [64,128,512]:
         learning_rate_0 = tf.Variable(0.1,name='initial_lr')
         learning_rate_decay_steps = 680000/batch_size
         learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,learning_rate_decay_steps,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
-        # tf.summary.scalar('learning_rate',learning_rate)
-
-    with tf.name_scope('loss'):
-        loss = siam.loss
-        # tf.summary.scalar('loss',loss)
 
     # train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
-    train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
-
+    train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(siam.loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
+    sess.run(tf.global_variables_initializer())
     for game_epoch in range(total_game_epoch):
         if game_epoch == 0:
-            sess.run(tf.global_variables_initializer())
+
             # merged = tf.summary.merge_all()
 
             # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
-            # pairs = np.load('pairs.npy').astype(np.float32)
-            # pairs_label = np.load('pairs_label.npy').astype(np.float32)
+            pairs = np.load('pairs.npy').astype(np.float32)
+            pairs_label = np.load('pairs_label.npy').astype(np.float32)
 
             # pairs = pairs[:1000]
             # pairs_label = pairs_label[:1000]
@@ -84,22 +79,22 @@ for batch_size in [64,128,512]:
             # np.save('pairs_label.npy',pairs_label)
 
             for epoch in range(epoch_train):
+                sess.run([learning_rate_0.initializer,global_step.initializer])
                 # there should be shuffle each epoch.
-                # sess.run([learning_rate_0.initializer,global_step.initializer])
-                # shuffle = np.random.permutation(pairs.shape[0])
-                # pairs = pairs[shuffle]
-                # pairs_label = pairs_label[shuffle]
+                shuffle = np.random.permutation(pairs.shape[0])
+                pairs = pairs[shuffle]
+                pairs_label = pairs_label[shuffle]
                 print('The next epoch is ',epoch)
                 # shuffle the pairs each epoch
-                # data_generator = batch_generator(pairs,pairs_label,batch_size)
-                # steps = 0
+                data_generator = batch_generator(pairs,pairs_label,batch_size)
+                steps = 0
                 # 这个for循环只是用来读取数据的。 每取一个batch的数据就是一个step
                 batch_loss_list = []
-                for steps in range(50000):# get batch data from data generator
-                    batch_x1,batch_y1 = mnist.train.next_batch(batch_size)
-                    batch_x2,batch_y2 = mnist.train.next_batch(batch_size)
-                    batch_y = (batch_y1==batch_y2).astype('float')
-                    y_true = np.expand_dims(batch_y,-1)
+                for ([batch_x1,batch_x2],y_true) in range(50000):# get batch data from data generator
+                    # batch_x1,batch_y1 = mnist.train.next_batch(batch_size)
+                    # batch_x2,batch_y2 = mnist.train.next_batch(batch_size)
+                    # batch_y = (batch_y1==batch_y2).astype('float')
+                    # y_true = np.expand_dims(batch_y,-1)
                     _, losses = sess.run([train_step,loss], 
                                                             feed_dict={
                                                                         siam.x1: batch_x1,
@@ -113,7 +108,7 @@ for batch_size in [64,128,512]:
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.
                         print('the game_epoch is %d,epoch is %d,step is %d, batch_size is %d, mean loss is %.3f,current learning_rate is %.8f' % 
                             (game_epoch, epoch, steps, batch_size, mean_loss,sess.run(learning_rate)))
-                    # steps += 1
+                    steps += 1
             # train_writer.close()
 
 
