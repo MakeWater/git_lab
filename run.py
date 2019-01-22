@@ -63,8 +63,10 @@ for batch_size in [64,128,512]:
 
     # train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
     train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(siam.loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
+    
     # 初始化全部变量，包括网络、学习率、global_step等
     sess.run(tf.global_variables_initializer())
+
     for game_epoch in range(total_game_epoch):
         if game_epoch == 0:
 
@@ -152,12 +154,12 @@ for batch_size in [64,128,512]:
                     if i==j:
                         W_test[i][j] = 1
                     else:
-                        W_test[i][j] = sess.run(siam.distance,
+                        W_test[i][j] = sess.run(siam.similarity,
                                 feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
                                            siam.x2:np.expand_dims(test_100[j], axis=0)})
-            max_distance = np.max(W_test)
-            W_test = max_distance - W_test
-            np.save('W_test_batch_size{}_Master.npy'.format(batch_size),W_test)
+            # max_distance = np.max(W_test)
+            # W_test = max_distance - W_test
+            np.save('W_test_batch_size{}_turn_parameters.npy'.format(batch_size),W_test)
             print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
 
         '''
