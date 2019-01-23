@@ -101,14 +101,23 @@ class siamese():
 
         return embedding
 
+    # def more_convolutional_layer(self,x):
+    #     x_input_image = tf.reshape(x,[-1,28,28,1])
+    #     #conv1:
+    #     with tf.name_scope('model1'):
+    #         with tf.variable_socpe('conv1') as scope:
+    #             x = tf.contrib.layers.conv2d(x_input_image,32,[7,7],activation_fn=)
+
     def network(self, x):
         fc1 = self.fc_layer(x, 1024, "fc1")
         ac1 = tf.nn.relu(fc1)
         fc2 = self.fc_layer(ac1, 1024, "fc2")
         ac2 = tf.nn.relu(fc2)
-        fc3 = self.fc_layer(ac2, 2, "fc3")
-        fc3 = tf.nn.l2_normalize(fc3,axis=1)
-        return fc3
+        fc3 = self.fc_layer(ac2, 512, "fc3")
+        ac3 = tf.nn.relu(fc3)
+        fc4 = self.fc_layer(ac3)
+        fc4 = tf.nn.l2_normalize(ac4,axis=1)
+        return fc4
 
     def fc_layer(self, inputs_data, n_weight, name):
         assert len(inputs_data.get_shape()) == 2
