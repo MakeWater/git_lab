@@ -109,7 +109,7 @@ for batch_size in [64,128,512]:
                                                                         siam.x2: x2,
                                                                         siam.y_true: y_true})
                     # batch_loss_list.append(np.array(losses))
-                    if steps%10==0:
+                    if steps%100==0:
 
                         mean_loss = np.mean(losses)
                         # train_writer.add_summary(summary,steps)

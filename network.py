@@ -37,21 +37,20 @@ class siamese():
         '''
         
         s = self.predict_similarity(self.output1,self.output2)
-        margin = 1.0
+        margin = tf.constant(1.0)
         within_part = self.y_true
-
         # 类内损失：
         # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
-        differ_loss = margin - s
+        # differ_loss = tf.pow(tf.maximum(tf.subtract(margin, s),0),2)
         #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
-        within_loss = tf.multiply(within_part,differ_loss)
+        within_loss = tf.multiply(within_part,tf.pow(tf.maximum(tf.subtract(margin, s),0),2))
         # 类间损失：
         #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
-        neg_pairs_part = 1.0 - within_part
-        between_loss = tf.multiply(neg_pairs_part,s) 
+        # neg_pairs_part = tf.subtract(margin,within_part)
+        between_loss = tf.multiply(tf.pow(tf.subtract(margin,within_part),2),s) 
 
         # 总体损失 = 正对损失+负对损失
-        loss = 0.5*(within_loss+between_loss)
+        loss = tf.reduce_mean(within_loss+between_loss)
         return loss
 
     def contrastive_loss(self,distance, y, margin):
@@ -67,62 +66,40 @@ class siamese():
             # transform input type to tensorflow type
             # x = tf.cast(x,tf.float32)
             x_image = tf.reshape(x,[-1,28,28,1])
-            tf.summary.image('input',x_image,10)
-
+            # tf.summary.image('input',x_image,10)
         # layer1: picture width = 28->28
         with tf.name_scope('conv1'):
             w_conv1 = self.weight_variable([5,5,1,32])
-            self.variable_summaries(w_conv1)
             b_conv1 = self.bias_variable([32])
-            self.variable_summaries(b_conv1)
             h_conv1 = tf.nn.relu(self.conv2d(x_image,w_conv1) + b_conv1)
-            tf.summary.histogram('activation1',h_conv1)
-
         # pooling layer1 : 28->14
         with tf.name_scope('pooling1'):
             h_pooling_1 = self.max_pool_2x2(h_conv1)
-
         # convolution layer2 : 14->14
         with tf.name_scope('conv2'):
             w_conv2 = self.weight_variable([5,5,32,64])
-            self.variable_summaries(w_conv2)
             b_conv2 = self.weight_variable([64])
-            self.variable_summaries(b_conv2)
             h_conv2 = tf.nn.relu(self.conv2d(h_pooling_1,w_conv2) + b_conv2)
-            tf.summary.histogram('activation2',h_conv2)
-
         # feature width : 14->7
         with tf.name_scope('pooling2'):
             h_pool2 = self.max_pool_2x2(h_conv2)
-
         with tf.name_scope('fc1'):
             # W2 = (W1-F+2P)/S + 1
             w_fc1 = self.weight_variable([7*7*64,1024])
-            self.variable_summaries(w_fc1)
             b_fc1 = self.bias_variable([1024])
-            self.variable_summaries(b_fc1)
             h_pool2_flat = tf.reshape(h_pool2,[-1,7*7*64])
             h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat,w_fc1) + b_fc1)
-            tf.summary.histogram('activation3',h_fc1)
-
         # with tf.name_scope('dropout'):
             # h_fc1_drop = tf.nn.dropout(h_fc1,self.dropout)
-
         with tf.name_scope('fc2'):
             # embedding in shape: [batch_size,10]
-            w_fc2 = self.weight_variable([1024,2])
-            self.variable_summaries(w_fc2)
-            b_fc2 = self.bias_variable([2])
-            self.variable_summaries(b_fc2)
+            w_fc2 = self.weight_variable([1024,5])
+            b_fc2 = self.bias_variable([5])
             h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
-
-        # embedding = h_fc2
-
         with tf.name_scope('embedding_normalize'):
             embedding = tf.nn.l2_normalize(h_fc2,axis=1)
 
         return embedding
-
 
     def network(self, x):
         fc1 = self.fc_layer(x, 1024, "fc1")
