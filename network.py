@@ -115,8 +115,8 @@ class siamese():
         ac2 = tf.nn.relu(fc2)
         fc3 = self.fc_layer(ac2, 512, "fc3")
         ac3 = tf.nn.relu(fc3)
-        fc4 = self.fc_layer(ac3)
-        fc4 = tf.nn.l2_normalize(ac4,axis=1)
+        fc4 = self.fc_layer(ac3,5,"fc4")
+        fc4 = tf.nn.l2_normalize(fc4,axis=1)
         return fc4
 
     def fc_layer(self, inputs_data, n_weight, name):
