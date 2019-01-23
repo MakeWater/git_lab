@@ -53,11 +53,11 @@ siam = siamese()
 # loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
 
-for batch_size in [64,128,512]:
+for batch_size in [32,64,128,512]:
     
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
-        learning_rate_0 = tf.Variable(0.01,name='initial_lr')
+        learning_rate_0 = tf.Variable(0.05,name='initial_lr')
         learning_rate_decay_steps = 0.5*len(pairs)/batch_size
         learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,learning_rate_decay_steps,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
 
@@ -99,7 +99,7 @@ for batch_size in [64,128,512]:
                 # data_generator = batch_generator(pairs,pairs_label,batch_size)
                 # steps = 0
                 # 这个for循环只是用来读取数据的。 每取一个batch的数据就是一个step
-                for steps in range(50000):# get batch data from data generator
+                for steps in range(60000):# get batch data from data generator
                     x1,y1 = mnist.train.next_batch(batch_size)
                     x2,y2 = mnist.train.next_batch(batch_size)
                     y_true = (y1==y2).astype('float')

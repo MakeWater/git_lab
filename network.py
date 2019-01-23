@@ -37,17 +37,17 @@ class siamese():
         '''
         
         s = self.predict_similarity(self.output1,self.output2)
-        margin = tf.constant(1.0)
+        margin = 1.0
         within_part = self.y_true
         # 类内损失：
         # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
         # differ_loss = tf.pow(tf.maximum(tf.subtract(margin, s),0),2)
         #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
-        within_loss = tf.multiply(within_part,tf.pow(tf.maximum(tf.subtract(margin, s),0),2))
+        within_loss = tf.multiply(within_part,tf.subtract(margin, s))
         # 类间损失：
         #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
         # neg_pairs_part = tf.subtract(margin,within_part)
-        between_loss = tf.multiply(tf.pow(tf.subtract(margin,within_part),2),s) 
+        between_loss = tf.multiply(tf.subtract(margin,within_part),s) 
 
         # 总体损失 = 正对损失+负对损失
         loss = tf.reduce_mean(within_loss+between_loss)
@@ -60,7 +60,6 @@ class siamese():
             return 0.5*tf.reduce_mean(dissimilarity + similarity)
 
     def deepnn(self,x):
-
         # input reshape to [batch_size,28,28,channel]
         with tf.name_scope('reshape'):
             # transform input type to tensorflow type
@@ -115,7 +114,7 @@ class siamese():
         ac2 = tf.nn.relu(fc2)
         fc3 = self.fc_layer(ac2, 512, "fc3")
         ac3 = tf.nn.relu(fc3)
-        fc4 = self.fc_layer(ac3,5,"fc4")
+        fc4 = self.fc_layer(ac3,4,"fc4")
         fc4 = tf.nn.l2_normalize(fc4,axis=1)
         return fc4
 
@@ -171,6 +170,37 @@ class siamese():
     def max_pool_2x2(self,x):
         return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1], padding='SAME')
 
+    def mnist_model(input, reuse=False):
+        with tf.name_scope("model"):
+            with tf.variable_scope("conv1") as scope:
+                net = tf.contrib.layers.conv2d(input, 32, [7, 7], activation_fn=tf.nn.relu, padding='SAME',
+                    weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+                net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME')
+
+            with tf.variable_scope("conv2") as scope:
+                net = tf.contrib.layers.conv2d(net, 64, [5, 5], activation_fn=tf.nn.relu, padding='SAME',
+                    weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+                net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME')
+
+            with tf.variable_scope("conv3") as scope:
+                net = tf.contrib.layers.conv2d(net, 128, [3, 3], activation_fn=tf.nn.relu, padding='SAME',
+                    weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+                net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME')
+
+            with tf.variable_scope("conv4") as scope:
+                net = tf.contrib.layers.conv2d(net, 256, [1, 1], activation_fn=tf.nn.relu, padding='SAME',
+                    weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+                net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME')
+
+            with tf.variable_scope("conv5") as scope:
+                net = tf.contrib.layers.conv2d(net, 2, [1, 1], activation_fn=None, padding='SAME',
+                    weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
+                net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME')
+
+            net = tf.contrib.layers.flatten(net)
+        
+        return net
+        
     def variable_summaries(self,var):
         '''Attach a lot of summaries to a Tensor (for Tensorboard visualization).'''
         with tf.name_scope('summaries'):
