@@ -43,7 +43,7 @@ class siamese():
         # max_part = tf.square(tf.maximum(margin-s,0)) # margin是一个正对该有的相似度临界值，如：1
         # differ_loss = tf.pow(tf.maximum(tf.subtract(margin, s),0),2)
         #如果相似度s未达到临界值margin，则最小化这个类内损失使s逼近这个margin，增大s
-        within_loss = tf.multiply(within_part,tf.subtract(margin, s))
+        within_loss = tf.square(tf.multiply(within_part,tf.subtract(margin, s)))
         # 类间损失：
         #如果是负对，between_loss就等于s，这时候within_loss=0，最小化损失就是降低相似度s使之更不相似
         # neg_pairs_part = tf.subtract(margin,within_part)
@@ -105,7 +105,8 @@ class siamese():
         ac2 = tf.nn.relu(fc2)
         fc3 = self.fc_layer(ac2,512,"fc3")
         ac3 = tf.nn.relu(fc3)
-        fc4 = self.fc_layer(ac3, 3, "fc4")
+        drop_out = tf.nn.dropout(ac3,keep_prob=0.25)
+        fc4 = self.fc_layer(drop_out, 4, "fc4")
         fc4 = tf.nn.l2_normalize(fc4,axis=1)
         return fc4
 
