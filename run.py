@@ -62,7 +62,7 @@ for batch_size in [32,64,128,512]:
         learning_rate = tf.train.exponential_decay(learning_rate_0,global_step,learning_rate_decay_steps,0.96) # 每喂入100个batch_size的数据后学习率衰减到最近一次的96%。
 
     # train_writer = tf.summary.FileWriter(log_dir + '/train',sess.graph)
-    train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(siam.loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
+    train_step = tf.train.GradientDescentOptimizer(0.01).minimize(siam.loss,global_step=global_step) # train_step是一个‘operation’对象，不能初始化
     
     # 初始化全部变量，包括网络、学习率、global_step等
     sess.run(tf.global_variables_initializer())

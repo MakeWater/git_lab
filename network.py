@@ -17,9 +17,11 @@ class siamese():
                 # self.dropout = tf.placeholder(tf.float32)
 
         with tf.variable_scope('siamese') as scope:
-            self.output1 = self.network(self.x1) # shape:(1000,10) or (1,10)
-            scope.reuse_variables()
-            self.output2 = self.network(self.x2)
+            # self.output1 = self.network(self.x1) # shape:(1000,10) or (1,10)
+            # scope.reuse_variables()
+            # self.output2 = self.network(self.x2)
+            self.output1 = self.mnist_model(self.x1,reuse=False)
+            self.output2 = self.mnist_model(self.x2,reuse=True)
             with tf.name_scope('similarity'):
                 self.similarity = self.predict_similarity(self.output1,self.output2)
                 # self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
@@ -170,10 +172,11 @@ class siamese():
     def max_pool_2x2(self,x):
         return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1], padding='SAME')
 
-    def mnist_model(input, reuse=False):
+    def mnist_model(self,inputs, reuse=False):
+        x_image = tf.reshape(inputs,[-1,28,28,1])
         with tf.name_scope("model"):
             with tf.variable_scope("conv1") as scope:
-                net = tf.contrib.layers.conv2d(input, 32, [7, 7], activation_fn=tf.nn.relu, padding='SAME',
+                net = tf.contrib.layers.conv2d(x_image, 32, [7, 7], activation_fn=tf.nn.relu, padding='SAME',
                     weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),scope=scope,reuse=reuse)
                 net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME')
 
@@ -198,6 +201,7 @@ class siamese():
                 net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME')
 
             net = tf.contrib.layers.flatten(net)
+            print('output shape of mnist_model is:',tf.shape(net))
         
         return net
         
