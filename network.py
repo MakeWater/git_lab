@@ -22,13 +22,13 @@ class siamese():
             scope.reuse_variables()
             self.output2 = self.network(self.x2)
             with tf.name_scope('similarity'):
-                self.similarity = self.predict_similarity(self.output1,self.output2)
-                # self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
+                # self.similarity = self.predict_similarity(self.output1,self.output2)
+                self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
         
         with tf.name_scope('loss'):
-            self.loss = self.contro_loss()
+            # self.loss = self.contro_loss()
             # self.loss = self.contrastive_loss(self.distance,self.y_true,margin= 0.5)
-            # self.loss = self.loss_with_spring()
+            self.loss = self.loss_with_spring()
 
 
     def contro_loss(self):
