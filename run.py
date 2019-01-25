@@ -52,7 +52,7 @@ siam = siamese()
 # loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
 
-for batch_size in [32,64,128,512,1024]:
+for batch_size in [8,32,64,128,512,1024,2048]:
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
         learning_rate_0 = tf.Variable(0.09,name='initial_lr')
@@ -145,13 +145,14 @@ for batch_size in [32,64,128,512,1024]:
             for i in range(100):
                 for j in range(100):
                     if i==j:
-                        W_test[i][j] = 1
+                        W_test[i][j] = 0
                     else:
                         W_test[i][j] = sess.run(siam.distance,
                                 feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
                                            siam.x2:np.expand_dims(test_100[j], axis=0)})
             max_distance = np.max(W_test)
-            W_test = max_distance - W_test
+            W_test = W_test / float(max_distance)
+            W_test = 1.0 - W_test
             np.save('W_test_batch_size{}_Master.npy'.format(batch_size),W_test)
             print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
 
