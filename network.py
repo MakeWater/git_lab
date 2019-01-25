@@ -103,9 +103,11 @@ class siamese():
         ac1 = tf.nn.relu(fc1)
         fc2 = self.fc_layer(ac1, 2048, "fc2")
         ac2 = tf.nn.relu(fc2)
-        fc3 = self.fc_layer(ac2,512,"fc3")
+        fc3 = self.fc_layer(ac2,1024,"fc3")
         ac3 = tf.nn.relu(fc3)
-        drop_out = tf.nn.dropout(ac3,keep_prob=0.25)
+        fc_plus = self.fc_layer(ac3,512,'fc_plus')
+        ac_plus = tf.nn.relu(fc_plus)
+        drop_out = tf.nn.dropout(ac_plus,keep_prob=0.25)
         fc4 = self.fc_layer(drop_out, 4, "fc4")
         fc4 = tf.nn.l2_normalize(fc4,axis=1)
         return fc4
