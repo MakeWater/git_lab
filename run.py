@@ -20,7 +20,7 @@ from utils import NMI,batch_generator
 # 超参数：
 params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 2
-epoch_train = 2
+epoch_train = 1
 epoch_val = 10
 # batch_size = 128
 
@@ -154,11 +154,12 @@ for batch_size in [32,64,128,512]:
                     if i==j:
                         W_test[i][j] = 1
                     else:
-                        W_test[i][j] = sess.run(siam.similarity,
+                        W_test[i][j] = sess.run(siam.distance,
                                 feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
                                            siam.x2:np.expand_dims(test_100[j], axis=0)})
-            # max_distance = np.max(W_test)
-            # W_test = max_distance - W_test
+            max_distance = np.max(W_test)
+            W_test = W_test/float(max_distance)
+            W_test = 1.0 - W_test
             np.save('W_test_batch_size{}_turn_parameters.npy'.format(batch_size),W_test)
             print('AFFINITY HAS BEEN COMPUTED AND SAVED ! ##########################################################')
 

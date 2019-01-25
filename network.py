@@ -17,19 +17,17 @@ class siamese():
                 # self.dropout = tf.placeholder(tf.float32)
 
         with tf.variable_scope('siamese') as scope:
-            # self.output1 = self.network(self.x1) # shape:(1000,10) or (1,10)
-            # scope.reuse_variables()
-            # self.output2 = self.network(self.x2)
-            self.output1 = self.mnist_model(self.x1,reuse=False)
-            self.output2 = self.mnist_model(self.x2,reuse=True)
+            self.output1 = self.network(self.x1) # shape:(1000,10) or (1,10)
+            scope.reuse_variables()
+            self.output2 = self.network(self.x2)
             with tf.name_scope('similarity'):
-                self.similarity = self.predict_similarity(self.output1,self.output2)
-                # self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
+                # self.similarity = self.predict_similarity(self.output1,self.output2)
+                self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
         
         with tf.name_scope('loss'):
-            self.loss = self.contro_loss()
+            # self.loss = self.contro_loss()
             # self.loss = self.contrastive_loss(self.distance,self.y_true,margin= 0.5)
-            # self.loss = self.loss_with_spring()
+            self.loss = self.loss_with_spring()
 
 
     def contro_loss(self):
@@ -53,6 +51,23 @@ class siamese():
 
         # 总体损失 = 正对损失+负对损失
         loss = tf.reduce_mean(within_loss+between_loss)
+        return loss
+
+    def loss_with_spring(self):
+        margin = 5.0
+        labels_t = self.y_true
+        labels_f = tf.subtract(1.0, self.y_true, name="1-yi")          # labels_ = !labels;
+        eucd2 = tf.pow(tf.subtract(self.output1, self.output2), 2)
+        eucd2 = tf.reduce_sum(eucd2, 1)
+        eucd = tf.sqrt(eucd2+1e-6, name="eucd")
+        C = tf.constant(margin, name="C")
+        # yi*||CNN(p1i)-CNN(p2i)||^2 + (1-yi)*max(0, C-||CNN(p1i)-CNN(p2i)||^2)
+        pos = tf.multiply(labels_t, eucd2, name="yi_x_eucd2")
+        # neg = tf.multiply(labels_f, tf.subtract(0.0,eucd2), name="yi_x_eucd2")
+        # neg = tf.multiply(labels_f, tf.maximum(0.0, tf.subtract(C,eucd2)), name="Nyi_x_C-eucd_xx_2")
+        neg = tf.multiply(labels_f, tf.pow(tf.maximum(tf.subtract(C, eucd), 0), 2), name="Nyi_x_C-eucd_xx_2")
+        losses = tf.add(pos, neg, name="losses")
+        loss = tf.reduce_mean(losses, name="loss")
         return loss
 
     def contrastive_loss(self,distance, y, margin):
@@ -114,37 +129,20 @@ class siamese():
         ac1 = tf.nn.relu(fc1)
         fc2 = self.fc_layer(ac1, 1024, "fc2")
         ac2 = tf.nn.relu(fc2)
-        fc3 = self.fc_layer(ac2, 512, "fc3")
-        ac3 = tf.nn.relu(fc3)
-        fc4 = self.fc_layer(ac3,4,"fc4")
-        fc4 = tf.nn.l2_normalize(fc4,axis=1)
+        fc3 = self.fc_layer(ac2, 4, "fc3")
+        # ac3 = tf.nn.relu(fc3)
+        # fc4 = self.fc_layer(ac3,3,"fc4")
+        fc4 = tf.nn.l2_normalize(fc3,axis=1)
         return fc4
 
-    def fc_layer(self, inputs_data, n_weight, name):
+    def fc_layer(self, inputs_data, output_dim, name):
         assert len(inputs_data.get_shape()) == 2
         n_prev_weight = inputs_data.get_shape()[1]
         initer = tf.truncated_normal_initializer(stddev=0.01)
-        W = tf.get_variable(name+'W', dtype=tf.float32, shape=[n_prev_weight, n_weight], initializer=initer)
-        b = tf.get_variable(name+'b', dtype=tf.float32, initializer=tf.constant(0.01, shape=[n_weight], dtype=tf.float32))
+        W = tf.get_variable(name+'W', dtype=tf.float32, shape=[n_prev_weight, output_dim], initializer=initer)
+        b = tf.get_variable(name+'b', dtype=tf.float32, initializer=tf.constant(0.01, shape=[output_dim], dtype=tf.float32))
         fc = tf.nn.bias_add(tf.matmul(inputs_data, W), b)
         return fc
-
-    def loss_with_spring(self):
-        margin = 5.0
-        labels_t = self.y_true
-        labels_f = tf.subtract(1.0, self.y_true, name="1-yi")          # labels_ = !labels;
-        eucd2 = tf.pow(tf.subtract(self.output1, self.output2), 2)
-        eucd2 = tf.reduce_sum(eucd2, 1)
-        eucd = tf.sqrt(eucd2+1e-6, name="eucd")
-        C = tf.constant(margin, name="C")
-        # yi*||CNN(p1i)-CNN(p2i)||^2 + (1-yi)*max(0, C-||CNN(p1i)-CNN(p2i)||^2)
-        pos = tf.multiply(labels_t, eucd2, name="yi_x_eucd2")
-        # neg = tf.multiply(labels_f, tf.subtract(0.0,eucd2), name="yi_x_eucd2")
-        # neg = tf.multiply(labels_f, tf.maximum(0.0, tf.subtract(C,eucd2)), name="Nyi_x_C-eucd_xx_2")
-        neg = tf.multiply(labels_f, tf.pow(tf.maximum(tf.subtract(C, eucd), 0), 2), name="Nyi_x_C-eucd_xx_2")
-        losses = tf.add(pos, neg, name="losses")
-        loss = tf.reduce_mean(losses, name="loss")
-        return loss
 
     def predict_similarity(self,embedding1,embedding2):
         '''
