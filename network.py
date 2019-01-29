@@ -17,9 +17,9 @@ class siamese():
                 # self.dropout = tf.placeholder(tf.float32)
 
         with tf.variable_scope('siamese') as scope:
-            self.output1 = self.network(self.x1) # shape:(1000,10) or (1,10)
+            self.output1 = self.deepnn(self.x1) # shape:(1000,10) or (1,10)
             scope.reuse_variables()
-            self.output2 = self.network(self.x2)
+            self.output2 = self.deepnn(self.x2)
             with tf.name_scope('similarity'):
                 # self.similarity = self.predict_similarity(self.output1,self.output2)
                 self.distance = tf.sqrt(tf.reduce_sum(tf.pow(self.output1 - self.output2, 2), axis=1, keep_dims=True))
@@ -109,8 +109,8 @@ class siamese():
             # h_fc1_drop = tf.nn.dropout(h_fc1,self.dropout)
         with tf.name_scope('fc2'):
             # embedding in shape: [batch_size,10]
-            w_fc2 = self.weight_variable([1024,5])
-            b_fc2 = self.bias_variable([5])
+            w_fc2 = self.weight_variable([1024,10])
+            b_fc2 = self.bias_variable([10])
             h_fc2 = tf.matmul(h_fc1,w_fc2)+b_fc2
         with tf.name_scope('embedding_normalize'):
             embedding = tf.nn.l2_normalize(h_fc2,axis=1)
@@ -199,7 +199,10 @@ class siamese():
                 net = tf.contrib.layers.max_pool2d(net, [2, 2], padding='SAME')
 
             net = tf.contrib.layers.flatten(net)
-            print('output shape of mnist_model is:',tf.shape(net))
+            with tf.variable_scope('fc1') as scope:
+                net = tf.contrib.layers.fully_connected(net,num_outputs=1024,reuse=reuse,scope=scope)
+            with tf.variable_scope('fc2')
+                net = tf.contrib.layers.fully_connected(net,num_outputs=4,reuse=reuse,scope=scope)
         
         return net
         

@@ -53,7 +53,7 @@ siam = siamese()
 # loss = contro_loss(left_output,right_output,y_)
 # loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
 
-for batch_size in [32,64,128,512]:
+for batch_size in [8,32,64,128,512,1024,2048]:
     
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
@@ -99,7 +99,7 @@ for batch_size in [32,64,128,512]:
                 # data_generator = batch_generator(pairs,pairs_label,batch_size)
                 # steps = 0
                 # 这个for循环只是用来读取数据的。 每取一个batch的数据就是一个step
-                for steps in range(60000):# get batch data from data generator
+                for steps in range(100000):# get batch data from data generator
                     x1,y1 = mnist.train.next_batch(batch_size)
                     x2,y2 = mnist.train.next_batch(batch_size)
                     y_true = (y1==y2).astype('float')
@@ -152,7 +152,7 @@ for batch_size in [32,64,128,512]:
             for i in range(100):
                 for j in range(100):
                     if i==j:
-                        W_test[i][j] = 1
+                        W_test[i][j] = 0
                     else:
                         W_test[i][j] = sess.run(siam.distance,
                                 feed_dict={siam.x1:np.expand_dims(test_100[i], axis=0),
