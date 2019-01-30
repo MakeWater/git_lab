@@ -120,7 +120,7 @@ def creat_pairs(data,label):
         for pair in single_pairs:
             pos_pairs.append(pair)
     neg_pairs = []
-    neg_num = len(pos_pairs)
+    neg_num = len(pos_pairs) #让负对的数目是正对的两倍
     for _ in range(neg_num):
         c_1 = random.choice(np.arange(cluster_number)) # cluster 1
         inc = random.randrange(1,cluster_number)
