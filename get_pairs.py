@@ -63,7 +63,7 @@ def autoencoder(data):
     return embeded
 
 def get_pairs_by_None(data,params):
-    '''get label_pre by standard spectral clustering '''
+    '''get label_pre by standard spectral clustering without precomputed W '''
     print('get affinity matrix by KNN')
     # embeded = autoencoder(data)
     embeded = np.load('embeded.npy')
@@ -73,7 +73,7 @@ def get_pairs_by_None(data,params):
 
 def get_pairs_by_siamese(data,W,params):
     '''affinity W is computed by siamese'''
-    params['affinity'] = 'precomputed'
+    params['affinity'] = 'precomputed' 
     label_pred = get_label_pred(W,params)
     pairs,pairs_label,class_indices,index_to_pair =  creat_pairs(data,label_pred)
     return pairs,pairs_label,class_indices,index_to_pair,label_pred
@@ -85,17 +85,14 @@ def creat_pairs(data,label):
     mnist_label = np.load('mnist_lab.npy')
 
     class_indices = get_class_indices(label)
-    class_indices = delete_mess_row(class_indices,1) # for mnist,only delete the largest cluster
+    # class_indices = delete_mess_row(class_indices,1) # for mnist,only delete the largest cluster
     display_label(class_indices,mnist_label)
     index_to_pair = strainer_of_classindices(data,class_indices)
-
     # np.save('class_indices.npy',class_indices)
     # np.save('index_to_pair.npy',index_to_pair)
-
     print('######################## SPLIT LINE ######################################')
-    # display label distribute
     display_label(index_to_pair,mnist_label)
-    # exit()
+
     cluster_number = len(index_to_pair)
     pos_pairs = []
     # 对每一个样本进行旋转后进行相互配对，得到关于自身的配对。
@@ -119,6 +116,7 @@ def creat_pairs(data,label):
         single_pairs = [[data[idx1],data[idx2]] for (idx1,idx2) in pos_pair_generator] #同一类只在原数据间配对，它们的旋转之间不配对
         for pair in single_pairs:
             pos_pairs.append(pair)
+
     neg_pairs = []
     neg_num = len(pos_pairs) #让负对的数目是正对的两倍
     for _ in range(neg_num):
@@ -128,16 +126,19 @@ def creat_pairs(data,label):
         idx1 = random.choice(index_to_pair[c_1])
         idx2 = random.choice(index_to_pair[c_2])
         neg_pairs.append([data[idx1],data[idx2]])
+
     pos_pairs = np.array(pos_pairs)
     neg_pairs = np.array(neg_pairs)
     pos_lab = np.ones(len(pos_pairs))
     neg_lab = np.zeros(len(neg_pairs))
     pairs = np.concatenate((pos_pairs,neg_pairs),axis=0)
     pairs_lab = np.concatenate((pos_lab,neg_lab))
+
     shuffle = np.random.permutation(pairs.shape[0])
     pairs = pairs[shuffle]
     pairs_lab = pairs_lab[shuffle]
     print('pairs shape is:',pairs.shape)
+
     return pairs,pairs_lab,class_indices,index_to_pair
 
 def get_pairs(data,W,params):
@@ -172,28 +173,37 @@ def get_pairs(data,W,params):
 
     return pairs,pairs_lab,index_to_pair
 
-
-
-
 def display_label(index_to_display,label_true):
+    '''display the result of predicted label '''
     for i in range(len(index_to_display)):
         arr = np.array(index_to_display[i],dtype=np.int32)
         print([len(index_to_display[i]), label_true[arr]])
 
-def strainer_of_classindices(data,class_indices):
+def strainer_of_classindices(data,class_indices,num_to_del):
     '''filter clusters to be more purity.
     data: raw mnist data in the shape (number,784)
     class_indices: primary assigned subcluster
+    num_to_del: the first num_to_del longest rows in class_indices will be deleted.
+
     return: a purified class_indices use spectral clustering with new "params_sub"
     '''
-    index_to_pair = []
+    class_indices = np.array(class_indices)
+    len_temp = []
     for i in range(len(class_indices)):
-        dt = data[class_indices[i]] # subcluster data
+        len_temp.append((i,len(class_indices[i])))
+    len_temp = sorted(len_temp,key=itemgetter(1),reverse=True)
+    # delete the first several longest row in class_indices
+    for i in range(num_to_del):
+        new_class_indices = np.delete(class_indices,[len_temp[i][0]],axis=0)
+
+    index_to_pair = []
+    for i in range(len(new_class_indices)):
+        dt = data[new_class_indices[i]] # subcluster data
         # dt_index = np.array([np.argwhere(dt==elem) for elem in dt]).reshape(-1)
         dt_index = np.arange(len(dt)) # 获取子cluster每一个数据样本的下标
-        index_save = np.array(zip(dt_index,class_indices[i]))
+        index_save = np.array(zip(dt_index,new_class_indices[i]))
         params_sub = {'n_clusters':2, 'n_nbrs':len(dt)/2, 'affinity':'nearest_neighbors'}
-        lab_sub_pred = get_label_pred(dt,params_sub) 
+        lab_sub_pred = get_label_pred(dt,params_sub)
         sub_class_indices = get_class_indices(lab_sub_pred) # index number from 0 ~ len(dt)
         cleaner_part = sub_class_indices[0] if len(sub_class_indices[0]) > len(sub_class_indices[1]) else sub_class_indices[1]
         purified_idx = index_save[cleaner_part,1] # purified data indices of each subcluster where it's in raw datasets.
@@ -205,27 +215,6 @@ def get_class_indices(label):
     class_indices = [np.where(label == i)[0] for i in range(categories)]
     class_indices = np.array(class_indices)
     return class_indices
-
-def delete_mess_row(class_indices,num_to_del):
-    '''
-    class_indices:锯齿状的列表，每一行都是一类数据的索引
-    这一步的目的在于谱聚类每一次聚类都会产生一类数量特别多但是分类又特别差的类。
-
-    return:
-           new_indices: np array deleted the mess class.
-           mess_idx: python list with the longest mess data indices. 
-                     We can use it as validation data.
-    '''
-    class_indices = np.array(class_indices)
-    len_temp = []
-    for i in range(len(class_indices)):
-        len_temp.append((i,len(class_indices[i])))
-    len_temp = sorted(len_temp,key=itemgetter(1),reverse=True)
-    # delete the first several longest row in class_indices
-    for i in range(num_to_del):
-        class_indices = np.delete(class_indices,[len_temp[i][0]],axis=0)
-    new_indices = class_indices
-    return new_indices
 
 def rot_img(img,angle):
     '''rotate image with crop
@@ -254,6 +243,26 @@ def get_label_pred(W,params):
     label_pred = s.fit_predict(W)
     return label_pred
 
+def delete_mess_row(class_indices,num_to_del):
+    '''
+    class_indices:锯齿状的列表，每一行都是一类数据的索引.
+    num_to_del: the first num_to_del longest rows in class_indices will be deleted.
+    这一步的目的在于谱聚类每一次聚类都会产生一类数量特别多但是分类又特别差的类。
+
+    return:
+           new_indices: np array deleted the mess class.
+    '''
+    class_indices = np.array(class_indices)
+    len_temp = []
+    for i in range(len(class_indices)):
+        len_temp.append((i,len(class_indices[i])))
+    len_temp = sorted(len_temp,key=itemgetter(1),reverse=True)
+    # delete the first several longest row in class_indices
+    for i in range(num_to_del):
+        class_indices = np.delete(class_indices,[len_temp[i][0]],axis=0)
+    new_indices = class_indices
+    return new_indices
+    
 # if __name__ == '__main__':
 #     pairs,pairs_label,pairs_index = get_pairs()
 #     np.save('pairs.npy',pairs),np.save('pairs_label.npy',pairs_label),np.save('pairs_index.npy',pairs_index)
