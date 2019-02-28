@@ -84,7 +84,6 @@ def creat_pairs(data,label,num_to_del,the_first_epoch):
     params_sub = {'n_clusters':2, 'n_nbrs':len(dt)/2, 'affinity':'nearest_neighbors'}
     '''
     mnist_label = np.load('mnist_lab.npy')
-
     class_indices = get_class_indices(label)
     # class_indices = delete_mess_row(class_indices,1) # for mnist,only delete the largest cluster
     display_label(class_indices,mnist_label)
@@ -95,24 +94,25 @@ def creat_pairs(data,label,num_to_del,the_first_epoch):
     display_label(index_to_pair,mnist_label)
 
     cluster_number = len(index_to_pair)
+    
     pos_pairs = []
     # 对每一个样本进行旋转后进行相互配对，得到关于自身的配对。
     for i in range(cluster_number):
-        for idx in index_to_pair[i]:   # index_to_pair >> class_indices
-            class_data_temp = []
-            img = data[idx].reshape(28,28)
-            class_data_temp.append(data[idx])
-            img_roted_330 = np.array(img)
-            img_roted_30 = np.array(img)
-            rows,cols = img_roted_330.shape[:2]
-            img_roted_330 = rot_img(img_roted_330,345).reshape(-1)
-            img_roted_30 = rot_img(img_roted_30,15).reshape(-1)
-            class_data_temp.append(img_roted_330)
-            class_data_temp.append(img_roted_30) # 此时class~temp中含有三个图片数据，且100%属于同一类
-            pos_pair_generator = combinations(class_data_temp,2)
-            single_pairs = [[sample1,sample2] for (sample1,sample2) in pos_pair_generator]
-            for pair in single_pairs:
-                pos_pairs.append(pair) # 添加一个图片及其变化 之间的配对！！！
+        # for idx in index_to_pair[i]:   # index_to_pair >> class_indices
+        #     class_data_temp = []
+        #     img = data[idx].reshape(28,28)
+        #     class_data_temp.append(data[idx])
+        #     img_roted_330 = np.array(img)
+        #     img_roted_30 = np.array(img)
+        #     rows,cols = img_roted_330.shape[:2]
+        #     img_roted_330 = rot_img(img_roted_330,345).reshape(-1)
+        #     img_roted_30 = rot_img(img_roted_30,15).reshape(-1)
+        #     class_data_temp.append(img_roted_330)
+        #     class_data_temp.append(img_roted_30) # 此时class~temp中含有三个图片数据，且100%属于同一类
+        #     pos_pair_generator = combinations(class_data_temp,2)
+        #     single_pairs = [[sample1,sample2] for (sample1,sample2) in pos_pair_generator]
+        #     for pair in single_pairs:
+        #         pos_pairs.append(pair) # 添加一个图片及其变化 之间的配对！！！
         pos_pair_generator = combinations(index_to_pair[i],2)      # index_to_pair >> class_indices
         single_pairs = [[data[idx1],data[idx2]] for (idx1,idx2) in pos_pair_generator] #同一类只在原数据间配对，它们的旋转之间不配对
         for pair in single_pairs:
