@@ -5,7 +5,8 @@ import tensorflow as tf
 from sklearn.metrics import normalized_mutual_info_score as nmi
 
 def NMI(label_pred,label):
-    '''convenient function to evaluate model,in NMI score;
+    '''
+    convenient function to evaluate model,in NMI score;
     index_to_val: the array contains each subcluster. use it's row number as cluster label
     label: the True label of each subcluster in index_to_val,the row in index_to_val was consist by index of raw data
     return: NMI score that show the purity of subcluster.
@@ -201,62 +202,3 @@ def contrastive_loss(model1, model2, y, margin):
         similarity = y * tf.square(distance)                                           # keep the similar label (1) close to each other
         dissimilarity = (1 - y) * tf.square(tf.maximum((margin - distance), 0))        # give penalty to dissimilar label if the distance is bigger than margin
         return tf.reduce_mean(dissimilarity + similarity) / 2
-
-# def deepnn2(x):
-
-#     # input reshape to [batch_size,28,28,channel]
-#     with tf.name_scope('reshape'):
-#         # transform input type to tensorflow type
-#         # x = tf.cast(x,tf.float32)
-#         x_image = tf.reshape(x,[-1,28,28,1])
-#         tf.summary.image('input',x_image,10)
-
-#     # layer1: picture width = 28->28
-#     with tf.name_scope('conv1'):
-#         w_conv1 = weight_variable([7,7,1,32])
-#         b_conv1 = bias_variable([32])
-#         h_conv1 = tf.nn.relu(conv2d(x_image,w_conv1) + b_conv1)
-#         tf.summary.histogram('activation1',h_conv1)
-
-#     # pooling layer1 : 28->14
-#     with tf.name_scope('pooling1'):
-#         h_pooling_1 = max_pool_2x2(h_conv1)
-
-#     # convolution layer2 : 14->14
-#     with tf.name_scope('conv2'):
-#         w_conv2 = weight_variable([5,5,32,64])
-#         b_conv2 = weight_variable([64])
-#         h_conv2 = tf.nn.relu(conv2d(h_pooling_1,w_conv2) + b_conv2)
-#         tf.summary.histogram('activation2',h_conv2)
-
-#     # feature width : 14->7
-#     with tf.name_scope('pooling2'):
-#         h_pool2 = max_pool_2x2(h_conv2)
-
-#     with tf.name_scope('conv3'):
-#         w_conv3 = weight_variable([3,3,64,128])
-#         b_conv3 = bias_variable([128])
-#         h_conv3 = tf.nn.relu(conv2d(h_pool2,w_conv3) + b_conv3)
-
-#     with tf.pooling3 = 
-
-#     with tf.name_scope('fc1'):
-#         # W2 = (W1-F+2P)/S + 1
-#         w_fc1 = weight_variable([7*7*64,1024])
-#         b_fc1 = bias_variable([1024])
-#         h_pool2_flat = tf.reshape(h_pool2,[-1,7*7*64])
-#         h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat,w_fc1) + b_fc1)
-#         tf.summary.histogram('activation3',h_fc1)
-
-#     # with tf.name_scope('dropout'):
-#         # h_fc1_drop = tf.nn.dropout(h_fc1,dropout)
-
-#     with tf.name_scope('fc2'):
-#         # embedding in shape: [batch_size,10]
-#         w_fc2 = weight_variable([1024,10])
-#         b_fc2 = bias_variable([10])
-#         embedding = tf.matmul(h_fc1,w_fc2)+b_fc2
-#         tf.summary.histogram('embedding',embedding)
-#         # embedding = tf.nn.softmax(embedding,dim=1)
-#         # tf.reshape(embedding,[1000,10])
-#     return embedding

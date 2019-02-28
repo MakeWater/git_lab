@@ -12,12 +12,13 @@ from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np 
 from sklearn import cluster
 
-from get_pairs import get_pairs_by_None,get_pairs_by_siamese
+from get_pairs import get_pairs_by_None,get_pairs_by_siamese,display_label
 from network import siamese
 from utils import NMI,batch_generator
 
 # 超参数：
-params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
+params = {'n_clusters':23, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
+# params = {'n_clusters':10, 'n_nbrs':27, 'affinity':'nearest_neighbors'}
 total_game_epoch = 3
 epoch_train = 10
 epoch_val = 10
@@ -30,26 +31,17 @@ mnist_data = np.load('mnist.npy').astype(np.float32)
 # mnist = input_data.read_data_sets('MNIST_data',one_hot=False)
 label = np.load('mnist_lab.npy')[:1000] # for NMI computation
 unlabel_data = mnist_data[:1000]
-
 # test_100_data = np.load('test_100_data.npy')
 test_100 = np.load('test_100.npy')
-pairs = np.load('pairs.npy').astype(np.float32)
-pairs_label = np.load('pairs_label.npy').astype(np.float32)
+
+# pairs = np.load('pairs.npy').astype(np.float32)
+# pairs_label = np.load('pairs_label.npy').astype(np.float32)
+
+
 sess = tf.InteractiveSession()
 siam = siamese()
 
-# # inputs:
-# left = tf.placeholder(tf.float32,[None,784],name='left_input')
-# right = tf.placeholder(tf.float32,[None,784],name='right_input')
-# y_ = tf.placeholder(tf.float32,[None,1],name='target_similarity_of_pairs')
-  
-# left_output = deepnn(left)
-# right_output = deepnn(right)
-# simi = predict_similarity(left_output,right_output)
-# loss = tf.losses.cosine_distance(simi,y_,axis=0)
-# loss = contro_loss(left_output,right_output,y_)
-# loss = contrastive_loss(left_output,right_output,y_,margin=0.5)
-
+pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params,num_to_del=2)
 for batch_size in [8]:
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
@@ -66,12 +58,12 @@ for batch_size in [8]:
     for game_epoch in range(total_game_epoch):
         if game_epoch == 0:
             # merged = tf.summary.merge_all()
-            # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params)
+            # pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params,num_to_del)
             # pairs = np.load('pairs_raw.npy')
             # pairs_label = np.load('pairs_raw_label.npy')
-            # NMI_score = NMI(label_pred,label)
-            # print('the mean NMI score is:',NMI_score)
-            # print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
+            NMI_score = NMI(label_pred,label)
+            print('the mean NMI score is:',NMI_score)
+            print('pairs shape is:{},pairs label shape is:{}'.format(pairs.shape[0],pairs_label.shape[0]))
 
             # np.save('pairs.npy',pairs)
             # np.save('pairs_label.npy',pairs_label)
@@ -100,7 +92,6 @@ for batch_size in [8]:
                                                                         siam.y_true: y_true})
                     # batch_loss_list.append(np.array(losses))
                     if steps%100==0:
-
                         mean_loss = np.mean(losses)
                         # train_writer.add_summary(summary,steps)
                         # saver.save(sess,os.path.join(log_dir + 'model','model.ckpt'),steps)# save trained model.
@@ -111,8 +102,9 @@ for batch_size in [8]:
 
         #################################################### 新的一个循环 ###################################################
         elif game_epoch > 0:
-            # 1、准备数据：W，pairs，pairs label, 修改params
-            # compute the affinity matrix by siamese:
+            # 孪生网络第一次训练完后：
+            # 1、准备数据：W，pairs，pairs_label, 修改params中聚类的目标簇数、矩阵的来源
+            # 2、使用第一次训练的孪生网络计算出矩阵W：
             n = len(unlabel_data) #1000条数据
             W = np.zeros((n,n))
             start = time.clock()
@@ -126,7 +118,7 @@ for batch_size in [8]:
                             feed_dict={siam.x1:np.expand_dims(unlabel_data[i],axis=0),
                                        siam.x2:np.expand_dims(unlabel_data[j],axis=0)})
                         if j%100==1:
-                            print('the similarity between {} and {} is {}'.format(i,j,W[i][j]))
+                            print('the distance between {} and {} is {}'.format(i,j,W[i][j]))
             elapsed = (time.clock() - start)
             print('Time used to compute affinity :',elapsed)
 
@@ -137,7 +129,7 @@ for batch_size in [8]:
             max_distance = np.max(W)
             W = W / float(max_distance)
             W = 1.0 - W
-            np.save('W_{}.npy'.format(game_epoch),W) # W 转为对称阵 
+            np.save('W_{}.npy'.format(game_epoch),W) 
 
             W_test = np.zeros((100,100),dtype=np.float64)
             for i in range(100):
@@ -156,14 +148,14 @@ for batch_size in [8]:
 
             # 预测新的对
             # 这里的class_indices可以验证谱聚类的效果,尤其是purf_idx,其实是纯化后的索引。
-            pairs1, pairs_label_1, class_indices, index_to_pair, label_pred = get_pairs_by_siamese(unlabel_data,W,params) # 验证新矩阵的效果。
+            # 这里W是孪生网络计算得到的，param中的一些参数要改了：n_clusters,affinity
+            params['n_clusters'] = 10
+            params['affinity'] = 'precomputed'
+            pairs1, pairs_label_1, class_indices, index_to_pair, label_pred = get_pairs_by_siamese(unlabel_data,W,params,num_to_del=0) # 验证新矩阵的效果。
+            # display_label(index_to_pair,label)
             print('pairs1 shape is:{},pairs1 label shape is:{}'.format(pairs1.shape,pairs_label_1.shape))
-            # save pairs data:
-            np.save('pairs{}.npy'.format(game_epoch),pairs1)
-            np.save('pairs_label_{}.npy'.format(game_epoch),pairs_label_1)
             np.save('index_to_pair{}.npy'.format(game_epoch),index_to_pair)
             # get NMI score: 
-
             NMI_score = NMI(label_pred,label)
             print('the mean NMI score of epoch{} is:'.format(game_epoch),NMI_score)
 
