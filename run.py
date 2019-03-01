@@ -29,8 +29,8 @@ epoch_val = 10
 
 mnist_data = np.load('mnist.npy').astype(np.float32)
 # mnist = input_data.read_data_sets('MNIST_data',one_hot=False)
-label = np.load('mnist_lab.npy')[:1000] # for NMI computation
-unlabel_data = mnist_data[:1000]
+label = np.load('mnist_lab.npy')[11100:11500] # for NMI computation
+unlabel_data = mnist_data[11100:11500]
 # test_100_data = np.load('test_100_data.npy')
 test_100 = np.load('test_100.npy')
 
@@ -41,7 +41,7 @@ test_100 = np.load('test_100.npy')
 sess = tf.InteractiveSession()
 siam = siamese()
 
-pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params,num_to_del=2)
+pairs, pairs_label, class_indices, index_to_pair, label_pred = get_pairs_by_None(unlabel_data,params,num_to_del=3)
 for batch_size in [8]:
     global_step = tf.Variable(0,trainable=False) #只有变量（variable）才要初始化，张量（Tensor）是没法初始化的
     with tf.name_scope('learning_rate'):
@@ -70,7 +70,7 @@ for batch_size in [8]:
 
             for epoch in range(epoch_train):
                 # there should be shuffle each epoch.
-                sess.run([learning_rate_0.initializer,global_step.initializer])
+                # sess.run([learning_rate_0.initializer,global_step.initializer])
                 shuffle = np.random.permutation(pairs.shape[0])
                 pairs = pairs[shuffle]
                 pairs_label = pairs_label[shuffle]

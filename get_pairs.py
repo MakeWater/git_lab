@@ -94,7 +94,7 @@ def creat_pairs(data,label,num_to_del,the_first_epoch):
     display_label(index_to_pair,mnist_label)
 
     cluster_number = len(index_to_pair)
-    
+
     pos_pairs = []
     # 对每一个样本进行旋转后进行相互配对，得到关于自身的配对。
     for i in range(cluster_number):
@@ -149,7 +149,8 @@ def display_label(index_to_display,label_true):
         print([len(index_to_display[i]), label_true[arr]])
 
 def strainer_of_classindices(data,class_indices,num_to_del,the_first_epoch):
-    '''filter clusters to be more purity.
+    '''
+    filter clusters to be more purity.
     data: raw mnist data in the shape (number,784)
     class_indices: primary assigned subcluster
     num_to_del: the first num_to_del longest rows in class_indices will be deleted.
@@ -188,7 +189,7 @@ def filter_by_distance(data,index):
     dist_idx = []
     for i in range(index.shape[0]):
         cent = np.mean(data[index[i]],axis=0) # 获取第i类数据的索引，求i类数据的图心cent[i]
-        dist2_list = [] 
+        dist2_list = []
         for idx in index[i]:
             dist=distance(data[idx],cent) # i类每个数据到该类数据中心cent[i]的距离并存入
             dist2_list.append(dist)
@@ -201,7 +202,7 @@ def filter_by_distance(data,index):
     for elements in dist_idx:
         new_idx.append(elements[0])
     index_to_pair = index[new_idx]
-    return index_to_pair  
+    return index_to_pair
     
 def distance(x1,x2):
     '''
@@ -216,7 +217,8 @@ def get_class_indices(label):
     return class_indices
 
 def rot_img(img,angle):
-    '''rotate image with crop
+    '''
+    rotate image with crop
     img : a 2D matrix
     angle: a inter in 0~360 angle,counter-clockwise direction.
     return: a rotated image(croped) in give angle,in anti-clockwise direction.shape(28,28)
@@ -228,7 +230,7 @@ def rot_img(img,angle):
     return roted_img
 
 def spectral_clustering(W,params):
-    ''' 
+    '''
     Implementing spectral clustering algorithm on unlabel data(or embeded) 
     in shape(sample_nums,784) or affinity matrix W
     W : raw data or affinity matrix precomputed by siamese.
@@ -251,15 +253,18 @@ def delete_mess_row(class_indices,num_to_del):
     return:
            new_indices: np array deleted the mess class.
     '''
-    class_indices = np.array(class_indices)
-    len_temp = []
-    for i in range(len(class_indices)):
-        len_temp.append((i,len(class_indices[i])))
-    len_temp = sorted(len_temp,key=itemgetter(1),reverse=True)
-    # delete the first several longest row in class_indices
-    for i in range(num_to_del):
-        class_indices = np.delete(class_indices,[len_temp[i][0]],axis=0)
-    new_indices = class_indices
+    if num_to_del == 0:
+        new_indices = class_indices
+    else:
+        class_indices = np.array(class_indices)
+        len_temp = []
+        for i in range(len(class_indices)):
+            len_temp.append((i,len(class_indices[i])))
+        len_temp = sorted(len_temp,key=itemgetter(1),reverse=True)
+        # delete the first several longest row in class_indices
+        for i in range(num_to_del):
+            class_indices = np.delete(class_indices,[len_temp[i][0]],axis=0)
+        new_indices = class_indices
     return new_indices
 
 def get_pairs(data,W,params):
