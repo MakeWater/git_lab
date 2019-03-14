@@ -14,6 +14,64 @@ from keras.models import Model
 from keras import backend as K
 from keras.losses import mse, binary_crossentropy
 
+random.seed(0)
+
+def creat_sample_pair(data,label,index):
+    '''index:array_like,choose validation data and to pair;
+    data and label are raw、true label.
+    '''
+
+    # data = np.load('mnist.npy')
+    # label = np.load('mnist_lab.npy')
+    #保存验证数据和验证标签
+    val_data = []
+    val_label = []
+    for i in range(len(index)):
+        for idx in index[i]:
+            val_data.append(data[idx])
+            val_label.append(label[idx])
+
+    val_data = np.array(val_data)
+    val_label = np.array(val_label)
+    shuffle = np.random.permutation(len(val_data))
+    val_data = val_data[shuffle]
+    val_label = val_label[shuffle]
+
+    np.save('val_data.npy',val_data)
+    np.save('val_label.npy',val_label)
+    
+    sample_pos_pairs = []
+    for i in range(len(index)):
+        pos_pair_idx_gen = combinations(index[i],2)
+        cluster_pair = [[data[idx1],data[idx2]] for (idx1,idx2) in pos_pair_idx_gen]
+        for idx_pair in cluster_pair:
+            sample_pos_pairs.append(idx_pair)
+    neg_pairs = []
+    neg_pair_num = len(sample_pos_pairs)
+    for _ in range(neg_pair_num):
+        c_1 = random.choice(np.arange(len(index)))
+        inc = random.randrange(1,len(index))
+        c_2 = (c_1+inc) % len(index) # cluster 2
+        idx1 = random.choice(index[c_1])
+        idx2 = random.choice(index[c_2])
+        neg_pairs.append([data[idx1],data[idx2]])
+
+    pos_pairs = np.array(sample_pos_pairs)
+    neg_pairs = np.array(neg_pairs)
+    pos_lab = np.ones(len(pos_pairs))
+    neg_lab = np.zeros(len(neg_pairs))
+    pairs = np.concatenate((pos_pairs,neg_pairs),axis=0)
+    pairs_label = np.concatenate((pos_lab,neg_lab))
+
+    shuffle = np.random.permutation(pairs.shape[0])
+    pairs = pairs[shuffle]
+    pairs_label = pairs_label[shuffle]
+
+    np.save('sample_pairs.npy',pairs)
+    np.save('sample_pairs_label.npy',pairs_label)
+    return pairs,pairs_label
+
+
 def autoencoder(data):
     ''' 获取数据embedding
     data:data to be encoded,not used for train.
@@ -59,21 +117,35 @@ def autoencoder(data):
     autoencoder.save_weights('autoencoder_mnist.h5')
     # 对 raw data 进行嵌入工作。
     embeded = encoder.predict(data)
-    # np.save('embeded.npy',embeded)
+    np.save('embeded.npy',embeded)
     return embeded
 
-def get_pairs_by_None(data,params,num_to_del):
-    '''get label_pre by standard spectral clustering without precomputed W '''
-    print('get affinity matrix by KNN')
-    embeded = autoencoder(data)
-    # embeded = np.load('embeded.npy')
-    label_pred = spectral_clustering(embeded,params)
-    pairs,pairs_label,class_indices,index_to_pair = creat_pairs(data,label_pred,num_to_del,the_first_epoch=True)
-    return pairs,pairs_label,class_indices,index_to_pair,label_pred   #===========>用于game_epoch 0,初始无矩阵的时候
+def get_pairs_by_None(data,params, use_autoencoder,num_to_del):
 
-def get_pairs_by_siamese(data,W,params,num_to_del):
+    '''
+    get label_pre by standard spectral clustering without precomputed W
+    data: unlabeled data,just used to pair.
+    params: params used to set spectral_clustering,dictionary.
+    use_autoencoder: bool, whether use autoencoder to encode "data".
+    num_to_del: int, the number of rows about the class_indices to be deleted.
+    return: pairs and pairs label used to train siamese network as a metric function;
+    class_indices: original assignment subcluster index of data.
+    index_to_pair: purity by 
+     '''
+
+    if use_autoencoder == True:
+        embeded = autoencoder(data)
+        # embeded = np.load('embeded.npy')
+        label_pred = spectral_clustering(embeded,params)
+    else:
+        print('get affinity matrix by KNN')
+        label_pred = spectral_clustering(data,params)
+    pairs,pairs_label,class_indices,index_to_pair = creat_pairs(data,label_pred,num_to_del,the_first_epoch=True)
+    return pairs,pairs_label,class_indices,index_to_pair,label_pred   # ===========>用于game_epoch 0,初始无矩阵的时候
+
+def get_pairs_by_siamese(data,W,params,num_to_del): 
+
     '''affinity W is computed by siamese'''
-     
     label_pred = spectral_clustering(W,params)
     pairs,pairs_label,class_indices,index_to_pair =  creat_pairs(data,label_pred,num_to_del,the_first_epoch=False)
     return pairs,pairs_label,class_indices,index_to_pair,label_pred #============>用于game_epoch >= 1的情况，即有网络计算的矩阵的时候
@@ -83,16 +155,16 @@ def creat_pairs(data,label,num_to_del,the_first_epoch):
     data is raw data,label is predicted by spectral clustering(SC)
     params_sub = {'n_clusters':2, 'n_nbrs':len(dt)/2, 'affinity':'nearest_neighbors'}
     '''
+
     mnist_label = np.load('mnist_lab.npy')
     class_indices = get_class_indices(label)
     # class_indices = delete_mess_row(class_indices,1) # for mnist,only delete the largest cluster
     display_label(class_indices,mnist_label)
     index_to_pair = strainer_of_classindices(data,class_indices,num_to_del,the_first_epoch)
-    # np.save('class_indices.npy',class_indices)
-    # np.save('index_to_pair.npy',index_to_pair)
+    np.save('class_indices.npy',class_indices)
+    np.save('index_to_pair.npy',index_to_pair)
     print('######################## SPLIT LINE ######################################')
     display_label(index_to_pair,mnist_label)
-
     cluster_number = len(index_to_pair)
 
     pos_pairs = []
@@ -139,7 +211,6 @@ def creat_pairs(data,label,num_to_del,the_first_epoch):
     pairs = pairs[shuffle]
     pairs_lab = pairs_lab[shuffle]
     print('pairs shape is:',pairs.shape)
-
     return pairs,pairs_lab,class_indices,index_to_pair
 
 def display_label(index_to_display,label_true):
@@ -157,6 +228,7 @@ def strainer_of_classindices(data,class_indices,num_to_del,the_first_epoch):
 
     return: a purified class_indices use spectral clustering with new "params_sub"
     '''
+
     class_indices = delete_mess_row(class_indices,num_to_del)
     if the_first_epoch==True:
         index_to_pair = filter_by_SC(data,class_indices)
@@ -210,24 +282,6 @@ def distance(x1,x2):
     only used to purify the cluster'''
     return np.sqrt(np.sum(np.square(x1-x2)))  
 
-def get_class_indices(label):
-    categories = len(collections.Counter(label))
-    class_indices = [np.where(label == i)[0] for i in range(categories)]
-    class_indices = np.array(class_indices)
-    return class_indices
-
-def rot_img(img,angle):
-    '''
-    rotate image with crop
-    img : a 2D matrix
-    angle: a inter in 0~360 angle,counter-clockwise direction.
-    return: a rotated image(croped) in give angle,in anti-clockwise direction.shape(28,28)
-    '''
-    img = img.reshape(28,28)
-    rows,cols = img.shape[:2]
-    roted_matrix = cv2.getRotationMatrix2D((cols/2,rows/2),angle,1)
-    roted_img = cv2.warpAffine(img,roted_matrix,(cols,rows))
-    return roted_img
 
 def spectral_clustering(W,params):
     '''
@@ -238,11 +292,18 @@ def spectral_clustering(W,params):
     return: predicted label.
     '''
     spectral = cluster.SpectralClustering(n_clusters=params['n_clusters'],
-        eigen_solver='arpack',affinity=params['affinity'],eigen_tol=params['n_clusters'],n_neighbors=params['n_nbrs'])
-    s = spectral.fit(W)
+        eigen_solver='arpack',random_state=0, n_init= params['n_init'] ,affinity=params['affinity'],
+        eigen_tol=params['n_clusters'], n_neighbors=params['n_neighbors'])
+    # s = spectral.fit(W)
     # np.save('spectral_clustering_matrix.npy',s.affinity_matrix_)
-    label_pred = s.fit_predict(W)
+    label_pred = spectral.fit_predict(W)
     return label_pred
+
+def get_class_indices(label):
+    categories = len(collections.Counter(label))
+    class_indices = [np.where(label == i)[0] for i in range(categories)]
+    class_indices = np.array(class_indices)
+    return class_indices
 
 def delete_mess_row(class_indices,num_to_del):
     '''
@@ -266,6 +327,20 @@ def delete_mess_row(class_indices,num_to_del):
             class_indices = np.delete(class_indices,[len_temp[i][0]],axis=0)
         new_indices = class_indices
     return new_indices
+
+
+def rot_img(img,angle):
+    '''
+    rotate image with crop
+    img : a 2D matrix
+    angle: a inter in 0~360 angle,counter-clockwise direction.
+    return: a rotated image(croped) in give angle,in anti-clockwise direction.shape(28,28)
+    '''
+    img = img.reshape(28,28)
+    rows,cols = img.shape[:2]
+    roted_matrix = cv2.getRotationMatrix2D((cols/2,rows/2),angle,1)
+    roted_img = cv2.warpAffine(img,roted_matrix,(cols,rows))
+    return roted_img
 
 def get_pairs(data,W,params):
     # data = np.load('mnist.npy')[:1000]
