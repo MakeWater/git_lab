@@ -49,7 +49,7 @@ class siamese():
         # neg_pairs_part = tf.subtract(margin,within_part)
         between_loss = tf.multiply(tf.subtract(margin,within_part),s) 
         # 总体损失 = 正对损失+负对损失
-        loss = tf.reduce_mean(within_loss+10*between_loss)
+        loss = tf.reduce_mean(within_loss+ between_loss)
         return loss
 
     def loss_with_spring(self):
@@ -125,7 +125,7 @@ class siamese():
         fc_plus = self.fc_layer(ac3,1024,'fc_plus')
         ac_plus = tf.nn.relu(fc_plus)
         # drop_out = tf.nn.dropout(ac_plus,keep_prob=0.25)
-        fc4 = self.fc_layer(ac_plus, 4, "fc4")
+        fc4 = self.fc_layer(ac_plus, 2, "fc4")
         fc4 = tf.nn.l2_normalize(fc4,axis=1)
         return fc4
 
